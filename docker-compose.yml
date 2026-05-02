@@ -1,0 +1,27 @@
+services:
+  app:
+    build: ./app
+    restart: unless-stopped
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - DB_PATH=/data/osint.db
+      - NODE_ENV=production
+    volumes:
+      - osint_data:/data
+    networks:
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.osint-suite.entrypoints=websecure"
+      - "traefik.http.routers.osint-suite.rule=Host(`your-domain.example.com`)"
+      - "traefik.http.routers.osint-suite.tls.certresolver=letsencrypt"
+      - "traefik.http.services.osint-suite.loadbalancer.server.port=3000"
+
+volumes:
+  osint_data:
+
+networks:
+  internal:
+    driver: bridge

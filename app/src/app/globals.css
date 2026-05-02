@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #070b12;
+  --color-surface: #0c1220;
+  --color-surface-2: #111827;
+  --color-border: #1a2640;
+  --color-border-bright: #2a4060;
+  --color-cyan: #00d4ff;
+  --color-cyan-dim: oklch(0.7 0.15 200 / 0.12);
+  --color-purple: #7c3aed;
+  --color-green: #22c55e;
+  --color-red: #ef4444;
+  --color-amber: #f59e0b;
+  --color-text: #e2e8f0;
+  --color-muted: #64748b;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-bright);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Glow effect for cyan elements */
+.glow-cyan {
+  box-shadow: 0 0 20px oklch(0.7 0.15 200 / 0.3);
+}
+
+.glow-text-cyan {
+  text-shadow: 0 0 20px oklch(0.7 0.15 200 / 0.6);
+}
+
+/* CSS hover utilities for server components */
+.hover-card {
+  transition: border-color 0.15s;
+}
+.hover-card:hover {
+  border-color: var(--color-border-bright) !important;
+}
+
+.hover-row:hover {
+  background: rgba(255,255,255,0.03);
+}
