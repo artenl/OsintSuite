@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Radar, Search, Loader2, RefreshCw, ShieldCheck, AlertTriangle, Lock,
-  Wifi, WifiOff, Camera,
+  Wifi, WifiOff, Camera, ExternalLink,
 } from 'lucide-react'
 
 type Tab = 'cameras' | 'search' | 'verify'
@@ -198,6 +198,8 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
   const [facets, setFacets] = useState<Record<string, Facet[]>>({})
   const [total, setTotal] = useState(0)
   const [country, setCountry] = useState('')
+  const [port, setPort] = useState('')
+  const [org, setOrg] = useState('')
 
   const run = useCallback(async (qOverride?: string) => {
     const q = (qOverride ?? query).trim()
@@ -221,35 +223,59 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runSignal])
 
-  const cc = country.trim().toUpperCase()
-  const withCountry = (q: string) => (cc ? `${q} country:"${cc}"` : q)
+  // Merge the active filters into a base query, replacing any existing token for
+  // the same key (so re-applying a different country swaps it rather than stacking).
+  const buildQuery = useCallback((base: string) => {
+    let q = base
+    const apply = (key: string, raw: string) => {
+      q = q.replace(new RegExp(`\\s*${key}:(?:"[^"]*"|\\S+)`, 'gi'), '').trim()
+      const val = raw.trim()
+      if (val) { const v = /\s/.test(val) ? `"${val}"` : val; q = `${q} ${key}:${v}`.trim() }
+    }
+    apply('country', country.trim().toUpperCase())
+    apply('port', port.trim())
+    apply('org', org.trim())
+    return q.trim()
+  }, [country, port, org])
+
+  const hasFilters = !!(country.trim() || port.trim() || org.trim())
 
   return (
     <div className="space-y-4">
       {/* Suggested camera searches */}
       <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>Suggested camera searches</p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>Country</span>
-            <input value={country} onChange={(e) => setCountry(e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, 2))}
-              placeholder="FR" maxLength={2}
-              className="w-14 px-2 py-1 rounded-md text-xs outline-none font-mono uppercase text-center"
-              style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
-          </div>
-        </div>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>Suggested camera searches</p>
         <div className="flex flex-wrap gap-2">
           {CAMERA_PRESETS.map((p) => (
-            <button key={p.label} onClick={() => run(withCountry(p.query))}
+            <button key={p.label} onClick={() => run(buildQuery(p.query))}
               className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
               style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', color: 'var(--color-purple)', cursor: 'pointer' }}>
               {p.label}
             </button>
           ))}
         </div>
-        <p className="text-xs mt-3" style={{ color: 'var(--color-muted)' }}>
-          Tip: set a country to focus on your region. Run a search, then use <strong>Verify exposure</strong> on each result to confirm which are actually open before reaching out to owners.
-        </p>
+
+        {/* Refinement filters — applied to a preset on click, or to the current query via Apply */}
+        <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted)' }}>Refine</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterInput label="Country" value={country} onChange={(v) => setCountry(v.replace(/[^a-zA-Z]/g, '').slice(0, 2))} placeholder="FR" width="w-16" mono upper onEnter={() => run(buildQuery(query))} />
+            <FilterInput label="Port" value={port} onChange={(v) => setPort(v.replace(/\D/g, '').slice(0, 5))} placeholder="80" width="w-20" mono onEnter={() => run(buildQuery(query))} />
+            <FilterInput label="Org" value={org} onChange={setOrg} placeholder="Orange, OVH…" width="w-40" onEnter={() => run(buildQuery(query))} />
+            <button onClick={() => run(buildQuery(query))} disabled={!query.trim()}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-cyan)', cursor: query.trim() ? 'pointer' : 'not-allowed', opacity: query.trim() ? 1 : 0.5 }}>
+              Apply to current search
+            </button>
+            {hasFilters && (
+              <button onClick={() => { setCountry(''); setPort(''); setOrg('') }}
+                className="text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>clear filters</button>
+            )}
+          </div>
+          <p className="text-xs mt-3" style={{ color: 'var(--color-muted)' }}>
+            Set filters, then click a model above (applies instantly) or <strong>Apply to current search</strong>. Then use <strong>Verify exposure</strong> on each result before contacting owners.
+          </p>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -311,7 +337,11 @@ function MatchRow({ m }: { m: SearchMatch }) {
   return (
     <div className="rounded-lg p-3" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text)' }}>{m.ip}:{m.port}</span>
+        <a href={`https://www.shodan.io/host/${m.ip}`} target="_blank" rel="noopener noreferrer"
+          title="View full host details on Shodan"
+          className="text-sm font-mono font-semibold inline-flex items-center gap-1" style={{ color: 'var(--color-cyan)' }}>
+          {m.ip}:{m.port} <ExternalLink size={11} />
+        </a>
         {m.product && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.08)', color: 'var(--color-cyan)' }}>{m.product}</span>}
         {m.country && <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{m.city ? `${m.city}, ` : ''}{m.country}</span>}
         <button onClick={check} disabled={loading}
@@ -374,6 +404,21 @@ function VerifyTab() {
           <VerdictBox v={result} />
         </div>
       )}
+    </div>
+  )
+}
+
+function FilterInput({ label, value, onChange, placeholder, width, mono, upper, onEnter }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+  width: string; mono?: boolean; upper?: boolean; onEnter?: () => void
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
+        placeholder={placeholder}
+        className={`${width} px-2 py-1 rounded-md text-xs outline-none ${mono ? 'font-mono' : ''} ${upper ? 'uppercase' : ''}`}
+        style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
     </div>
   )
 }
