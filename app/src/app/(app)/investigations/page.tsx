@@ -4,7 +4,8 @@ import { getSession } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { investigations } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
-import { Globe, User, Trash2, FolderSearch, type LucideProps } from 'lucide-react'
+import Link from 'next/link'
+import { Globe, User, FolderSearch, Plus, type LucideProps } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 type IconComponent = React.ComponentType<LucideProps>
@@ -29,11 +30,25 @@ export default async function InvestigationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Investigations</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--color-muted)' }}>
-          {all.length} saved investigation{all.length !== 1 ? 's' : ''}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Investigations</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--color-muted)' }}>
+            {all.length} saved investigation{all.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <Link
+          href="/domain"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0 transition-all"
+          style={{
+            background: 'rgba(0,212,255,0.15)',
+            border: '1px solid rgba(0,212,255,0.4)',
+            color: 'var(--color-cyan)',
+          }}
+        >
+          <Plus size={16} />
+          New Investigation
+        </Link>
       </div>
 
       {all.length === 0 ? (
@@ -43,6 +58,21 @@ export default async function InvestigationsPage() {
         }}>
           <FolderSearch size={40} className="mx-auto mb-4" style={{ color: 'var(--color-muted)' }} />
           <p style={{ color: 'var(--color-muted)' }}>No saved investigations yet.</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--color-muted)' }}>
+            Run a scan on the Domain or Person page, then tap <span style={{ color: 'var(--color-cyan)' }}>Save investigation</span>.
+          </p>
+          <Link
+            href="/domain"
+            className="inline-flex items-center gap-2 mt-5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{
+              background: 'rgba(0,212,255,0.15)',
+              border: '1px solid rgba(0,212,255,0.4)',
+              color: 'var(--color-cyan)',
+            }}
+          >
+            <Plus size={16} />
+            Start an Investigation
+          </Link>
         </div>
       ) : (
         <div className="rounded-xl overflow-hidden" style={{

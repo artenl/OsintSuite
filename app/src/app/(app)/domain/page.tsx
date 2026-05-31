@@ -39,6 +39,7 @@ export default function DomainPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [copied, setCopied] = useState(false)
   const [insights, setInsights] = useState<Insights | null>(null)
   const [insightsLoading, setInsightsLoading] = useState(false)
@@ -68,6 +69,7 @@ export default function DomainPage() {
     const t = target.trim().replace(/^https?:\/\//, '').split('/')[0]
     setResults({})
     setSaved(false)
+    setSaveError('')
     setInsights(null)
     setInsightsError('')
     setRunning(true)
@@ -100,10 +102,11 @@ export default function DomainPage() {
 
   async function saveInvestigation() {
     setSaveLoading(true)
+    setSaveError('')
     try {
       const t = target.trim().replace(/^https?:\/\//, '').split('/')[0]
       const isIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(t)
-      await fetch('/api/investigations', {
+      const res = await fetch('/api/investigations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -112,7 +115,14 @@ export default function DomainPage() {
           data: JSON.stringify(results),
         }),
       })
-      setSaved(true)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setSaveError(err.error || `Save failed (HTTP ${res.status})`)
+      } else {
+        setSaved(true)
+      }
+    } catch (err) {
+      setSaveError(String(err))
     } finally {
       setSaveLoading(false)
     }
@@ -213,6 +223,10 @@ export default function DomainPage() {
             {copied ? 'Copied!' : 'Copy JSON'}
           </button>
         </div>
+      )}
+
+      {saveError && !running && (
+        <p className="text-xs" style={{ color: 'var(--color-red)' }}>Could not save: {saveError}</p>
       )}
 
       {/* AI Insights */}

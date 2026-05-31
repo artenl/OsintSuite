@@ -10,11 +10,12 @@ const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'osint.db
 fs.mkdirSync(path.dirname(dbPath), { recursive: true })
 
 const sqlite = new Database(dbPath)
+// Set busy_timeout FIRST: the `journal_mode = WAL` pragma below itself takes a
+// write lock, so the timeout must already be in effect or parallel imports
+// (e.g. Next.js collecting page data across routes during build) throw SQLITE_BUSY.
+sqlite.pragma('busy_timeout = 15000')
 sqlite.pragma('journal_mode = WAL')
 sqlite.pragma('foreign_keys = ON')
-// Wait for locks instead of failing instantly. Without this, parallel imports
-// (e.g. Next.js collecting page data across routes during build) throw SQLITE_BUSY.
-sqlite.pragma('busy_timeout = 5000')
 
 export const db = drizzle(sqlite, { schema })
 
