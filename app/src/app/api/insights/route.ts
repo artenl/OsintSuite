@@ -10,7 +10,8 @@ const schema = z.object({
   results: z.record(z.unknown()),
 })
 
-const MODEL = 'gemini-2.5-flash'
+// Best first; fall back if the higher-tier model is rate-limited on the free tier.
+const MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash']
 
 // Flatten the per-tool results map into a compact text block for the LLM.
 function buildEvidence(results: Record<string, unknown>): string {
@@ -82,46 +83,67 @@ ${guidance}
 EVIDENCE:
 ${evidence}`
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${keyRow.keyValue}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-            responseSchema: RESPONSE_SCHEMA,
-          },
-        }),
-        signal: AbortSignal.timeout(30000),
-      }
-    )
+  let lastError = 'Gemini request failed'
+  let lastStatus = 502
 
-    if (res.status === 400) return NextResponse.json({ error: 'Gemini rejected the request (check the API key is valid)' }, { status: 400 })
-    if (res.status === 429) return NextResponse.json({ error: 'Gemini rate limit reached (free tier). Try again shortly.' }, { status: 429 })
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}))
-      const msg = (errBody as { error?: { message?: string } })?.error?.message
-      return NextResponse.json({ error: msg || `Gemini returned ${res.status}` }, { status: res.status })
-    }
-
-    const data = await res.json()
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!text) return NextResponse.json({ error: 'Gemini returned an empty response' }, { status: 502 })
-
-    let analysis
+  for (let i = 0; i < MODELS.length; i++) {
+    const model = MODELS[i]
+    const isLast = i === MODELS.length - 1
     try {
-      analysis = JSON.parse(text)
-    } catch {
-      return NextResponse.json({ error: 'Could not parse the analysis', raw: text }, { status: 502 })
-    }
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${keyRow.keyValue}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              responseMimeType: 'application/json',
+              responseSchema: RESPONSE_SCHEMA,
+            },
+          }),
+          // 2.5 Pro is slower than Flash — give it room.
+          signal: AbortSignal.timeout(55000),
+        }
+      )
 
-    return NextResponse.json({ model: MODEL, ...analysis })
-  } catch (err) {
-    const msg = String(err).includes('timeout') ? 'Gemini request timed out' : String(err)
-    return NextResponse.json({ error: msg }, { status: 500 })
+      // Rate-limited or model unavailable → try the next (cheaper) model.
+      if ((res.status === 429 || res.status === 404 || res.status === 503) && !isLast) {
+        lastError = `Gemini ${model} unavailable (${res.status})`
+        lastStatus = res.status
+        continue
+      }
+
+      if (res.status === 400) return NextResponse.json({ error: 'Gemini rejected the request (check the API key is valid)' }, { status: 400 })
+      if (res.status === 429) return NextResponse.json({ error: 'Gemini rate limit reached (free tier). Try again shortly.' }, { status: 429 })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        const msg = (errBody as { error?: { message?: string } })?.error?.message
+        return NextResponse.json({ error: msg || `Gemini returned ${res.status}` }, { status: res.status })
+      }
+
+      const data = await res.json()
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!text) {
+        if (!isLast) { lastError = `${model} returned empty`; continue }
+        return NextResponse.json({ error: 'Gemini returned an empty response' }, { status: 502 })
+      }
+
+      let analysis
+      try {
+        analysis = JSON.parse(text)
+      } catch {
+        return NextResponse.json({ error: 'Could not parse the analysis', raw: text }, { status: 502 })
+      }
+
+      return NextResponse.json({ model, ...analysis })
+    } catch (err) {
+      lastError = String(err).includes('timeout') ? `${model} timed out` : String(err)
+      lastStatus = 500
+      if (!isLast) continue
+    }
   }
+
+  return NextResponse.json({ error: lastError }, { status: lastStatus })
 }
