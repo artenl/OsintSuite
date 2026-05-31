@@ -19,9 +19,34 @@ type VerifyResult = {
   _verdict: 'open' | 'protected' | 'reachable' | 'unreachable'
 }
 
+// Curated camera search presets (product strings verified against Shodan facets).
+const CAMERA_PRESETS: { label: string; query: string }[] = [
+  { label: 'All IP cameras', query: 'device:webcam' },
+  { label: 'TRENDnet', query: 'product:"TRENDnet TV-IP110W webcam display httpd"' },
+  { label: 'GeoVision', query: 'product:"GeoVision GeoHttpServer for webcams"' },
+  { label: 'Avtech', query: 'product:"Avtech AVN801 network camera"' },
+  { label: 'Netwave', query: 'product:"Netwave IP camera http config"' },
+  { label: 'Hikvision', query: 'product:"Hikvision IP Camera"' },
+  { label: 'Dahua', query: 'product:"Dahua"' },
+  { label: 'Axis', query: 'product:"Axis"' },
+  { label: 'D-Link', query: 'product:"D-Link/Airlink IP webcam http config"' },
+  { label: 'Yawcam', query: 'product:"Yawcam webcam viewer httpd"' },
+  { label: 'Webcam 7', query: 'product:"webcam 7 httpd"' },
+  { label: 'MJPG streamers', query: 'product:"MJPG-streamer"' },
+]
+
 export default function ShodanPage() {
   const [tab, setTab] = useState<Tab>('cameras')
   const [role, setRole] = useState<string>('user')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [runSignal, setRunSignal] = useState(0)
+
+  // Called by suggestions / catalog rows: load a query into the Search tab and run it.
+  const runSearch = useCallback((q: string) => {
+    setSearchQuery(q)
+    setRunSignal((s) => s + 1)
+    setTab('search')
+  }, [])
 
   useEffect(() => {
     fetch('/api/auth/me').then((r) => r.ok && r.json()).then((d) => d && setRole(d.role)).catch(() => {})
@@ -67,14 +92,14 @@ export default function ShodanPage() {
         ))}
       </div>
 
-      {tab === 'cameras' && <CamerasTab role={role} />}
-      {tab === 'search' && <SearchTab />}
+      {tab === 'cameras' && <CamerasTab role={role} onSearch={runSearch} />}
+      {tab === 'search' && <SearchTab query={searchQuery} setQuery={setSearchQuery} runSignal={runSignal} />}
       {tab === 'verify' && <VerifyTab />}
     </div>
   )
 }
 
-function CamerasTab({ role }: { role: string }) {
+function CamerasTab({ role, onSearch }: { role: string; onSearch: (q: string) => void }) {
   const [cameras, setCameras] = useState<CameraEntry[]>([])
   const [query, setQuery] = useState('device:webcam')
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
@@ -153,6 +178,11 @@ function CamerasTab({ role }: { role: string }) {
                 </div>
               </div>
               <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--color-muted)' }}>{c.count.toLocaleString()}</span>
+              <button onClick={() => onSearch(`product:"${c.product}"`)} title="Search exposed instances"
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs flex-shrink-0"
+                style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.2)', color: 'var(--color-cyan)', cursor: 'pointer' }}>
+                <Search size={11} /> Search
+              </button>
             </div>
           ))}
         </div>
@@ -161,36 +191,73 @@ function CamerasTab({ role }: { role: string }) {
   )
 }
 
-function SearchTab() {
-  const [query, setQuery] = useState('')
+function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v: string) => void; runSignal: number }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [matches, setMatches] = useState<SearchMatch[]>([])
   const [facets, setFacets] = useState<Record<string, Facet[]>>({})
   const [total, setTotal] = useState(0)
+  const [country, setCountry] = useState('')
 
-  async function run() {
-    if (!query.trim()) return
+  const run = useCallback(async (qOverride?: string) => {
+    const q = (qOverride ?? query).trim()
+    if (!q) return
+    setQuery(q)
     setLoading(true); setError(''); setMatches([]); setFacets({})
     try {
       const res = await fetch('/api/shodan/search', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query.trim() }),
+        body: JSON.stringify({ query: q }),
       })
       const d = await res.json()
       if (!res.ok) setError(d.error || 'Search failed')
       else { setMatches(d.matches || []); setFacets(d.facets || {}); setTotal(d.total || 0) }
     } catch (err) { setError(String(err)) } finally { setLoading(false) }
-  }
+  }, [query, setQuery])
+
+  // Run automatically when a suggestion / catalog row triggers a search.
+  useEffect(() => {
+    if (runSignal > 0 && query.trim()) run(query)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runSignal])
+
+  const cc = country.trim().toUpperCase()
+  const withCountry = (q: string) => (cc ? `${q} country:"${cc}"` : q)
 
   return (
     <div className="space-y-4">
+      {/* Suggested camera searches */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>Suggested camera searches</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>Country</span>
+            <input value={country} onChange={(e) => setCountry(e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, 2))}
+              placeholder="FR" maxLength={2}
+              className="w-14 px-2 py-1 rounded-md text-xs outline-none font-mono uppercase text-center"
+              style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {CAMERA_PRESETS.map((p) => (
+            <button key={p.label} onClick={() => run(withCountry(p.query))}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+              style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', color: 'var(--color-purple)', cursor: 'pointer' }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs mt-3" style={{ color: 'var(--color-muted)' }}>
+          Tip: set a country to focus on your region. Run a search, then use <strong>Verify exposure</strong> on each result to confirm which are actually open before reaching out to owners.
+        </p>
+      </div>
+
       <div className="flex gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && run()}
           placeholder='e.g.  product:"Hikvision IP Camera" country:FR'
           className="flex-1 px-3 py-2.5 rounded-lg text-sm outline-none font-mono"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
-        <button onClick={run} disabled={loading || !query.trim()}
+        <button onClick={() => run()} disabled={loading || !query.trim()}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold"
           style={{ background: 'rgba(0,212,255,0.15)', border: '1px solid rgba(0,212,255,0.4)', color: 'var(--color-cyan)', cursor: loading || !query.trim() ? 'not-allowed' : 'pointer', opacity: loading || !query.trim() ? 0.6 : 1 }}>
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Search
