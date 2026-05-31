@@ -84,9 +84,9 @@ export default function ShodanPage() {
           <button key={t.id} onClick={() => setTab(t.id as Tab)}
             className="px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 transition-all"
             style={{
-              background: tab === t.id ? 'rgba(0,212,255,0.1)' : 'transparent',
+              background: tab === t.id ? 'rgba(51,255,153,0.1)' : 'transparent',
               color: tab === t.id ? 'var(--color-cyan)' : 'var(--color-muted)',
-              border: tab === t.id ? '1px solid rgba(0,212,255,0.2)' : '1px solid transparent',
+              border: tab === t.id ? '1px solid rgba(51,255,153,0.2)' : '1px solid transparent',
             }}>
             <t.icon size={14} />{t.label}
           </button>
@@ -151,7 +151,7 @@ function CamerasTab({ role, onSearch }: { role: string; onSearch: (q: string) =>
             style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
           <button onClick={refresh} disabled={refreshing}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium"
-            style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.2)', color: 'var(--color-cyan)', cursor: refreshing ? 'not-allowed' : 'pointer' }}>
+            style={{ background: 'rgba(51,255,153,0.1)', border: '1px solid rgba(51,255,153,0.2)', color: 'var(--color-cyan)', cursor: refreshing ? 'not-allowed' : 'pointer' }}>
             {refreshing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Refresh
           </button>
         </div>
@@ -181,7 +181,7 @@ function CamerasTab({ role, onSearch }: { role: string; onSearch: (q: string) =>
               <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--color-muted)' }}>{c.count.toLocaleString()}</span>
               <button onClick={() => onSearch(`product:"${c.product}"`)} title="Search exposed instances"
                 className="flex items-center gap-1 px-2 py-1 rounded-md text-xs flex-shrink-0"
-                style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.2)', color: 'var(--color-cyan)', cursor: 'pointer' }}>
+                style={{ background: 'rgba(51,255,153,0.1)', border: '1px solid rgba(51,255,153,0.2)', color: 'var(--color-cyan)', cursor: 'pointer' }}>
                 <Search size={11} /> Search
               </button>
             </div>
@@ -305,7 +305,7 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
           {CAMERA_PRESETS.map((p) => (
             <button key={p.label} onClick={() => run(buildQuery(p.query))}
               className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', color: 'var(--color-purple)', cursor: 'pointer' }}>
+              style={{ background: 'rgba(255,180,84,0.1)', border: '1px solid rgba(255,180,84,0.25)', color: 'var(--color-purple)', cursor: 'pointer' }}>
               {p.label}
             </button>
           ))}
@@ -320,7 +320,7 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
             <FilterInput label="Org" value={org} onChange={setOrg} placeholder="Orange, OVH…" width="w-40" onEnter={() => run(buildQuery(query))} />
             <button onClick={() => run(buildQuery(query))} disabled={!query.trim()}
               className="px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-cyan)', cursor: query.trim() ? 'pointer' : 'not-allowed', opacity: query.trim() ? 1 : 0.5 }}>
+              style={{ background: 'rgba(51,255,153,0.1)', border: '1px solid rgba(51,255,153,0.25)', color: 'var(--color-cyan)', cursor: query.trim() ? 'pointer' : 'not-allowed', opacity: query.trim() ? 1 : 0.5 }}>
               Apply to current search
             </button>
             {hasFilters && (
@@ -342,7 +342,7 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
         <button onClick={() => run()} disabled={loading || !query.trim()}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: 'rgba(0,212,255,0.15)', border: '1px solid rgba(0,212,255,0.4)', color: 'var(--color-cyan)', cursor: loading || !query.trim() ? 'not-allowed' : 'pointer', opacity: loading || !query.trim() ? 0.6 : 1 }}>
+          style={{ background: 'rgba(51,255,153,0.15)', border: '1px solid rgba(51,255,153,0.4)', color: 'var(--color-cyan)', cursor: loading || !query.trim() ? 'not-allowed' : 'pointer', opacity: loading || !query.trim() ? 0.6 : 1 }}>
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Search
         </button>
       </div>
@@ -417,25 +417,25 @@ function MatchRow({ m, vstate, onVerify }: { m: SearchMatch; vstate?: VState; on
     }}>
       <div className="flex items-center gap-3 flex-wrap">
         {loading ? (
-          <span className="text-xs flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.1)', color: 'var(--color-cyan)' }}>
+          <span className="text-xs flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: 'rgba(51,255,153,0.1)', color: 'var(--color-cyan)' }}>
             <Loader2 size={10} className="animate-spin" /> checking
           </span>
         ) : badge ? (
           <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
         ) : null}
         <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text)' }}>{m.ip}:{m.port}</span>
-        {m.product && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.08)', color: 'var(--color-cyan)' }}>{m.product}</span>}
+        {m.product && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(51,255,153,0.08)', color: 'var(--color-cyan)' }}>{m.product}</span>}
         {m.country && <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{m.city ? `${m.city}, ` : ''}{m.country}</span>}
         <div className="ml-auto flex items-center gap-2">
           <a href={`https://www.shodan.io/host/${m.ip}`} target="_blank" rel="noopener noreferrer"
             title="View full host details on Shodan"
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
-            style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-cyan)', textDecoration: 'none' }}>
+            style={{ background: 'rgba(51,255,153,0.1)', border: '1px solid rgba(51,255,153,0.25)', color: 'var(--color-cyan)', textDecoration: 'none' }}>
             <ExternalLink size={11} /> Shodan
           </a>
           <button onClick={() => { onVerify(); setOpen(true) }} disabled={loading}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
-            style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', color: 'var(--color-purple)', cursor: loading ? 'not-allowed' : 'pointer' }}>
+            style={{ background: 'rgba(255,180,84,0.12)', border: '1px solid rgba(255,180,84,0.3)', color: 'var(--color-purple)', cursor: loading ? 'not-allowed' : 'pointer' }}>
             {loading ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />} Re-check
           </button>
         </div>
@@ -488,7 +488,7 @@ function VerifyTab() {
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
         <button onClick={run} disabled={loading || !ip.trim()}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: 'rgba(0,212,255,0.15)', border: '1px solid rgba(0,212,255,0.4)', color: 'var(--color-cyan)', cursor: loading || !ip.trim() ? 'not-allowed' : 'pointer', opacity: loading || !ip.trim() ? 0.6 : 1 }}>
+          style={{ background: 'rgba(51,255,153,0.15)', border: '1px solid rgba(51,255,153,0.4)', color: 'var(--color-cyan)', cursor: loading || !ip.trim() ? 'not-allowed' : 'pointer', opacity: loading || !ip.trim() ? 0.6 : 1 }}>
           {loading ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />} Check
         </button>
       </div>
@@ -510,8 +510,8 @@ function Switch({ checked, onChange, label, hint }: {
     <button type="button" onClick={() => onChange(!checked)} className="flex items-center gap-2 text-left" style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
       <span className="relative inline-block flex-shrink-0" style={{
         width: 34, height: 18, borderRadius: 9,
-        background: checked ? 'rgba(0,212,255,0.45)' : 'var(--color-surface-2)',
-        border: `1px solid ${checked ? 'rgba(0,212,255,0.5)' : 'var(--color-border)'}`,
+        background: checked ? 'rgba(51,255,153,0.45)' : 'var(--color-surface-2)',
+        border: `1px solid ${checked ? 'rgba(51,255,153,0.5)' : 'var(--color-border)'}`,
         transition: 'all .15s',
       }}>
         <span style={{

@@ -163,9 +163,9 @@ export default function SettingsPage() {
             onClick={() => { setTab(t.id as typeof tab); t.onSelect?.() }}
             className="px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 transition-all"
             style={{
-              background: tab === t.id ? 'rgba(0,212,255,0.1)' : 'transparent',
+              background: tab === t.id ? 'rgba(51,255,153,0.1)' : 'transparent',
               color: tab === t.id ? 'var(--color-cyan)' : 'var(--color-muted)',
-              border: tab === t.id ? '1px solid rgba(0,212,255,0.2)' : '1px solid transparent',
+              border: tab === t.id ? '1px solid rgba(51,255,153,0.2)' : '1px solid transparent',
             }}
           >
             <t.icon size={14} />
@@ -204,7 +204,7 @@ export default function SettingsPage() {
                   type="submit"
                   disabled={createLoading}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                  style={{ background: 'rgba(0,212,255,0.15)', border: '1px solid rgba(0,212,255,0.3)', color: 'var(--color-cyan)', cursor: createLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ background: 'rgba(51,255,153,0.15)', border: '1px solid rgba(51,255,153,0.3)', color: 'var(--color-cyan)', cursor: createLoading ? 'not-allowed' : 'pointer' }}
                 >
                   {createLoading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                   Create User
@@ -223,7 +223,7 @@ export default function SettingsPage() {
             ) : (
               users.map((u, i) => (
                 <div key={u.id} className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: i < users.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: 'rgba(0,212,255,0.15)', color: 'var(--color-cyan)' }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: 'rgba(51,255,153,0.15)', color: 'var(--color-cyan)' }}>
                     {u.username[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -233,9 +233,9 @@ export default function SettingsPage() {
                     </p>
                   </div>
                   <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{
-                    background: u.role === 'admin' ? 'rgba(0,212,255,0.1)' : 'rgba(255,255,255,0.05)',
+                    background: u.role === 'admin' ? 'rgba(51,255,153,0.1)' : 'rgba(255,255,255,0.05)',
                     color: u.role === 'admin' ? 'var(--color-cyan)' : 'var(--color-muted)',
-                    border: `1px solid ${u.role === 'admin' ? 'rgba(0,212,255,0.2)' : 'var(--color-border)'}`,
+                    border: `1px solid ${u.role === 'admin' ? 'rgba(51,255,153,0.2)' : 'var(--color-border)'}`,
                   }}>
                     {u.role}
                   </span>
@@ -265,7 +265,7 @@ export default function SettingsPage() {
               onClick={loadCredits}
               disabled={creditsLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.2)', color: 'var(--color-cyan)', cursor: creditsLoading ? 'not-allowed' : 'pointer', opacity: creditsLoading ? 0.6 : 1 }}
+              style={{ background: 'rgba(51,255,153,0.1)', border: '1px solid rgba(51,255,153,0.2)', color: 'var(--color-cyan)', cursor: creditsLoading ? 'not-allowed' : 'pointer', opacity: creditsLoading ? 0.6 : 1 }}
             >
               {creditsLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
               Refresh
@@ -292,7 +292,7 @@ export default function SettingsPage() {
                     {SERVICE_LABELS[svc.service] ?? svc.service}
                   </p>
                   {svc.plan && (
-                    <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(0,212,255,0.08)', color: 'var(--color-cyan)', border: '1px solid rgba(0,212,255,0.15)' }}>
+                    <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(51,255,153,0.08)', color: 'var(--color-cyan)', border: '1px solid rgba(51,255,153,0.15)' }}>
                       {svc.plan}
                     </span>
                   )}
@@ -401,8 +401,8 @@ export default function SettingsPage() {
                     disabled={savingKey === svc.id || !keyValues[svc.id]?.trim()}
                     className="px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all"
                     style={{
-                      background: savedKey === svc.id ? 'rgba(34,197,94,0.15)' : 'rgba(0,212,255,0.1)',
-                      border: `1px solid ${savedKey === svc.id ? 'rgba(34,197,94,0.3)' : 'rgba(0,212,255,0.2)'}`,
+                      background: savedKey === svc.id ? 'rgba(34,197,94,0.15)' : 'rgba(51,255,153,0.1)',
+                      border: `1px solid ${savedKey === svc.id ? 'rgba(34,197,94,0.3)' : 'rgba(51,255,153,0.2)'}`,
                       color: savedKey === svc.id ? 'var(--color-green)' : 'var(--color-cyan)',
                       cursor: !keyValues[svc.id]?.trim() ? 'not-allowed' : 'pointer',
                       opacity: !keyValues[svc.id]?.trim() ? 0.5 : 1,

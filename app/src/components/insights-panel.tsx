@@ -33,7 +33,7 @@ export function InsightsPanel({
   return (
     <div className="rounded-xl overflow-hidden" style={{
       background: 'var(--color-surface)',
-      border: '1px solid rgba(0,212,255,0.25)',
+      border: '1px solid rgba(51,255,153,0.25)',
     }}>
       <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: insights || error ? '1px solid var(--color-border)' : 'none' }}>
         <Sparkles size={15} style={{ color: 'var(--color-cyan)' }} />
@@ -49,8 +49,8 @@ export function InsightsPanel({
           disabled={loading}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
           style={{
-            background: 'rgba(0,212,255,0.12)',
-            border: '1px solid rgba(0,212,255,0.3)',
+            background: 'rgba(51,255,153,0.12)',
+            border: '1px solid rgba(51,255,153,0.3)',
             color: 'var(--color-cyan)',
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.6 : 1,

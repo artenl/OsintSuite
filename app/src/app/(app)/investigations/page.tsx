@@ -41,8 +41,8 @@ export default async function InvestigationsPage() {
           href="/domain"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0 transition-all"
           style={{
-            background: 'rgba(0,212,255,0.15)',
-            border: '1px solid rgba(0,212,255,0.4)',
+            background: 'rgba(51,255,153,0.15)',
+            border: '1px solid rgba(51,255,153,0.4)',
             color: 'var(--color-cyan)',
           }}
         >
@@ -65,8 +65,8 @@ export default async function InvestigationsPage() {
             href="/domain"
             className="inline-flex items-center gap-2 mt-5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={{
-              background: 'rgba(0,212,255,0.15)',
-              border: '1px solid rgba(0,212,255,0.4)',
+              background: 'rgba(51,255,153,0.15)',
+              border: '1px solid rgba(51,255,153,0.4)',
               color: 'var(--color-cyan)',
             }}
           >

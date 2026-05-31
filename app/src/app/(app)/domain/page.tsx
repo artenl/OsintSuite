@@ -165,8 +165,8 @@ export default function DomainPage() {
           disabled={running || !target.trim()}
           className="px-5 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all"
           style={{
-            background: 'rgba(0,212,255,0.15)',
-            border: '1px solid rgba(0,212,255,0.4)',
+            background: 'rgba(51,255,153,0.15)',
+            border: '1px solid rgba(51,255,153,0.4)',
             color: 'var(--color-cyan)',
             cursor: running || !target.trim() ? 'not-allowed' : 'pointer',
             opacity: running || !target.trim() ? 0.6 : 1,

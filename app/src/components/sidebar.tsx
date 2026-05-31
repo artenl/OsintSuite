@@ -56,14 +56,14 @@ export function Sidebar({ username, role }: SidebarProps) {
         borderBottom: '1px solid var(--color-border)',
       }}>
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{
-          background: 'rgba(0,212,255,0.15)',
-          border: '1px solid rgba(0,212,255,0.3)',
+          background: 'rgba(51,255,153,0.15)',
+          border: '1px solid rgba(51,255,153,0.3)',
         }}>
           <Shield size={16} style={{ color: 'var(--color-cyan)' }} />
         </div>
         <div>
-          <p className="text-sm font-bold tracking-tight" style={{ color: 'var(--color-text)' }}>OSINT Suite</p>
-          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>v1.0</p>
+          <p className="text-sm font-bold tracking-tight terminal-cursor" style={{ color: 'var(--color-cyan)' }}>OSINT Suite</p>
+          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>v1.0 — secure shell</p>
         </div>
       </div>
 
@@ -77,9 +77,9 @@ export function Sidebar({ username, role }: SidebarProps) {
               href={item.href}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group"
               style={{
-                background: active ? 'rgba(0,212,255,0.1)' : 'transparent',
+                background: active ? 'rgba(51,255,153,0.1)' : 'transparent',
                 color: active ? 'var(--color-cyan)' : 'var(--color-muted)',
-                border: active ? '1px solid rgba(0,212,255,0.2)' : '1px solid transparent',
+                border: active ? '1px solid rgba(51,255,153,0.2)' : '1px solid transparent',
                 textDecoration: 'none',
               }}
               onMouseEnter={(e) => {

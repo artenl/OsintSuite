@@ -43,7 +43,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--color-bg)' }}>
       {/* Background grid */}
       <div className="fixed inset-0 pointer-events-none" style={{
-        backgroundImage: 'linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(51,255,153,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(51,255,153,0.03) 1px, transparent 1px)',
         backgroundSize: '40px 40px',
       }} />
 
@@ -51,8 +51,8 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style={{
-            background: 'linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.15))',
-            border: '1px solid rgba(0,212,255,0.3)',
+            background: 'linear-gradient(135deg, rgba(51,255,153,0.15), rgba(255,180,84,0.15))',
+            border: '1px solid rgba(51,255,153,0.3)',
           }}>
             <Shield size={32} style={{ color: 'var(--color-cyan)' }} />
           </div>
@@ -141,16 +141,16 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all"
               style={{
-                background: loading ? 'rgba(0,212,255,0.1)' : 'rgba(0,212,255,0.15)',
-                border: '1px solid rgba(0,212,255,0.4)',
+                background: loading ? 'rgba(51,255,153,0.1)' : 'rgba(51,255,153,0.15)',
+                border: '1px solid rgba(51,255,153,0.4)',
                 color: 'var(--color-cyan)',
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
               onMouseEnter={(e) => {
-                if (!loading) (e.currentTarget.style.background = 'rgba(0,212,255,0.25)')
+                if (!loading) (e.currentTarget.style.background = 'rgba(51,255,153,0.25)')
               }}
               onMouseLeave={(e) => {
-                if (!loading) (e.currentTarget.style.background = 'rgba(0,212,255,0.15)')
+                if (!loading) (e.currentTarget.style.background = 'rgba(51,255,153,0.15)')
               }}
             >
               {loading && <Loader2 size={16} className="animate-spin" />}

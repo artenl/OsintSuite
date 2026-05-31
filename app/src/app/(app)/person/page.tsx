@@ -222,9 +222,9 @@ export default function PersonPage() {
             onClick={() => { setMode(m.id); setResults({}); setDorks([]); setInsights(null); setInsightsError(''); setSaved(false) }}
             className="px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 transition-all"
             style={{
-              background: mode === m.id ? 'rgba(124,58,237,0.15)' : 'transparent',
+              background: mode === m.id ? 'rgba(255,180,84,0.15)' : 'transparent',
               color: mode === m.id ? 'var(--color-purple)' : 'var(--color-muted)',
-              border: mode === m.id ? '1px solid rgba(124,58,237,0.3)' : '1px solid transparent',
+              border: mode === m.id ? '1px solid rgba(255,180,84,0.3)' : '1px solid transparent',
             }}
           >
             <m.icon size={13} />
@@ -245,7 +245,7 @@ export default function PersonPage() {
             placeholder={MODES.find(m => m.id === mode)?.placeholder}
             className="w-full pl-9 pr-4 py-3 rounded-xl text-sm outline-none"
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-            onFocus={(e) => (e.target.style.borderColor = 'rgba(124,58,237,0.6)')}
+            onFocus={(e) => (e.target.style.borderColor = 'rgba(255,180,84,0.6)')}
             onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
           />
         </div>
@@ -254,8 +254,8 @@ export default function PersonPage() {
           disabled={loading || !target.trim()}
           className="px-5 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all"
           style={{
-            background: 'rgba(124,58,237,0.15)',
-            border: '1px solid rgba(124,58,237,0.4)',
+            background: 'rgba(255,180,84,0.15)',
+            border: '1px solid rgba(255,180,84,0.4)',
             color: 'var(--color-purple)',
             cursor: loading || !target.trim() ? 'not-allowed' : 'pointer',
             opacity: loading || !target.trim() ? 0.6 : 1,
