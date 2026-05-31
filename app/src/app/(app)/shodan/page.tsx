@@ -337,18 +337,22 @@ function MatchRow({ m }: { m: SearchMatch }) {
   return (
     <div className="rounded-lg p-3" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
       <div className="flex items-center gap-3 flex-wrap">
-        <a href={`https://www.shodan.io/host/${m.ip}`} target="_blank" rel="noopener noreferrer"
-          title="View full host details on Shodan"
-          className="text-sm font-mono font-semibold inline-flex items-center gap-1" style={{ color: 'var(--color-cyan)' }}>
-          {m.ip}:{m.port} <ExternalLink size={11} />
-        </a>
+        <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text)' }}>{m.ip}:{m.port}</span>
         {m.product && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.08)', color: 'var(--color-cyan)' }}>{m.product}</span>}
         {m.country && <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{m.city ? `${m.city}, ` : ''}{m.country}</span>}
-        <button onClick={check} disabled={loading}
-          className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
-          style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', color: 'var(--color-purple)', cursor: loading ? 'not-allowed' : 'pointer' }}>
-          {loading ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />} Verify exposure
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <a href={`https://www.shodan.io/host/${m.ip}`} target="_blank" rel="noopener noreferrer"
+            title="View full host details on Shodan"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
+            style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-cyan)', textDecoration: 'none' }}>
+            <ExternalLink size={11} /> Shodan
+          </a>
+          <button onClick={check} disabled={loading}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
+            style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', color: 'var(--color-purple)', cursor: loading ? 'not-allowed' : 'pointer' }}>
+            {loading ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />} Verify exposure
+          </button>
+        </div>
       </div>
       {m.title && <p className="text-xs mt-1 truncate" style={{ color: 'var(--color-muted)' }}>{m.title}</p>}
       {m.org && <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>{m.org}</p>}
