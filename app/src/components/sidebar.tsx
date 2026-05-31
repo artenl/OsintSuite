@@ -63,7 +63,7 @@ export function Sidebar({ username, role }: SidebarProps) {
         </div>
         <div>
           <p className="text-sm font-bold tracking-tight terminal-cursor" style={{ color: 'var(--color-cyan)' }}>OSINT Suite</p>
-          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>v1.0 — secure shell</p>
+          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>v1.1.5 — secure shell</p>
         </div>
       </div>
 
