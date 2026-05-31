@@ -247,7 +247,7 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
     const q = (qOverride ?? query).trim()
     if (!q) return
     setQuery(q)
-    setLoading(true); setError(''); setMatches([]); setFacets({}); setVerdicts({}); setOnlyOpen(false)
+    setLoading(true); setError(''); setMatches([]); setFacets({}); setVerdicts({})
     try {
       const res = await fetch('/api/shodan/search', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -328,12 +328,10 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
                 className="text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>clear filters</button>
             )}
           </div>
-          <label className="flex items-center gap-2 mt-3 cursor-pointer w-fit">
-            <input type="checkbox" checked={autoVerify} onChange={(e) => setAutoVerify(e.target.checked)} />
-            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              Auto-verify exposure on every result (filters out false positives — no feeds opened)
-            </span>
-          </label>
+          <div className="mt-4 pt-3 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+            <Switch checked={autoVerify} onChange={setAutoVerify} label="Auto-verify exposure" hint="checks every result — no feeds opened" />
+            <Switch checked={onlyOpen} onChange={(v) => { setOnlyOpen(v); if (v) setAutoVerify(true) }} label="Auto-filter to open only" hint="hide protected / offline false positives" />
+          </div>
         </div>
       </div>
 
@@ -365,12 +363,7 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
                   <Loader2 size={10} className="animate-spin" /> {checkingCount} checking
                 </span>
               )}
-              {openCount > 0 && (
-                <label className="flex items-center gap-1.5 ml-auto cursor-pointer">
-                  <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
-                  <span className="text-xs" style={{ color: 'var(--color-text)' }}>Show only open</span>
-                </label>
-              )}
+              {onlyOpen && <span className="text-xs ml-auto" style={{ color: 'var(--color-cyan)' }}>filtered to open</span>}
             </>
           )}
         </div>
@@ -507,6 +500,32 @@ function VerifyTab() {
         </div>
       )}
     </div>
+  )
+}
+
+function Switch({ checked, onChange, label, hint }: {
+  checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string
+}) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} className="flex items-center gap-2 text-left" style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+      <span className="relative inline-block flex-shrink-0" style={{
+        width: 34, height: 18, borderRadius: 9,
+        background: checked ? 'rgba(0,212,255,0.45)' : 'var(--color-surface-2)',
+        border: `1px solid ${checked ? 'rgba(0,212,255,0.5)' : 'var(--color-border)'}`,
+        transition: 'all .15s',
+      }}>
+        <span style={{
+          position: 'absolute', top: 1, left: checked ? 16 : 1,
+          width: 14, height: 14, borderRadius: '50%',
+          background: checked ? 'var(--color-cyan)' : 'var(--color-muted)',
+          transition: 'all .15s',
+        }} />
+      </span>
+      <span>
+        <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>{label}</span>
+        {hint && <span className="text-xs block" style={{ color: 'var(--color-muted)' }}>{hint}</span>}
+      </span>
+    </button>
   )
 }
 
