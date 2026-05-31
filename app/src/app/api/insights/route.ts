@@ -58,15 +58,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No completed tool results to analyze yet' }, { status: 400 })
   }
 
-  const prompt = `You are a senior OSINT and threat-intelligence analyst. Analyze the reconnaissance data below for the target "${target}" (${type ?? 'unknown type'}).
+  const isPerson = ['person', 'username', 'email', 'name', 'phone'].includes(type ?? '')
+
+  const guidance = isPerson
+    ? `This is a PERSON / identity investigation — assess the subject's digital footprint and exposure, not malware.
+- riskLevel: exposure/privacy risk. HIGH = breached credentials (HIBP) or a broad, easily-correlated cross-platform footprint with real-name + location leaks; LOW = minimal presence, no breaches.
+- summary: 2-4 plain sentences — who this appears to be, how exposed they are, and how confidently the accounts/profiles tie to one person.
+- keyFindings: confirmed accounts across platforms, breach exposure (which breaches), real name / location / employer / email leaks, linked social accounts (Gravatar/GitHub), and any reused handle that aids correlation.
+- recommendedNextSteps: concrete pivots — cross-reference a found GitHub email against other tools, check specific platforms, search a discovered real name, review specific breaches.`
+    : `This is an infrastructure / threat investigation.
+- riskLevel: weigh malicious flags (VirusTotal/abuse.ch/urlscan), exposed services & CVEs (Shodan/InternetDB), suspicious infra, missing email security (SPF/DMARC/DKIM), and cert/registration anomalies.
+- summary: 2-4 sentences a non-expert can understand — what this target is and whether it looks legitimate, suspicious, or malicious.
+- keyFindings: the most important concrete observations (open ports, CVEs, blacklist hits, subdomains of note, registrar/age, tech stack).
+- recommendedNextSteps: specific follow-up investigative actions.`
+
+  const prompt = `You are a senior OSINT analyst. Analyze the data below for the target "${target}" (${type ?? 'unknown type'}).
 
 Produce a tight, factual assessment. Base every claim ONLY on the evidence provided — never invent data. If signals conflict or are missing, say so.
 
 Guidance:
-- riskLevel: weigh malicious flags (VirusTotal/abuse.ch/urlscan), exposed services & CVEs (Shodan/InternetDB), suspicious infra, missing email security (SPF/DMARC/DKIM), and cert/registration anomalies.
-- summary: 2-4 sentences a non-expert can understand — what this target is and whether it looks legitimate, suspicious, or malicious.
-- keyFindings: the most important concrete observations (open ports, CVEs, blacklist hits, subdomains of note, registrar/age, tech stack).
-- recommendedNextSteps: specific follow-up investigative actions.
+${guidance}
 
 EVIDENCE:
 ${evidence}`

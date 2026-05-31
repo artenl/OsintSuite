@@ -88,18 +88,20 @@ export default async function InvestigationsPage() {
                 className="flex items-center gap-4 px-4 py-3"
                 style={{ borderBottom: i < all.length - 1 ? '1px solid var(--color-border)' : 'none' }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{
-                  background: `${color}20`,
-                }}>
-                  <Icon size={14} style={{ color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{inv.target}</p>
-                  <p className="text-xs capitalize" style={{ color: 'var(--color-muted)' }}>
-                    {inv.type} · {inv.createdAt ? formatDate(inv.createdAt) : ''}
-                  </p>
-                  {inv.notes && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-muted)' }}>{inv.notes}</p>}
-                </div>
+                <Link href={`/investigations/${inv.id}`} className="flex items-center gap-4 flex-1 min-w-0" style={{ textDecoration: 'none' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{
+                    background: `${color}20`,
+                  }}>
+                    <Icon size={14} style={{ color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{inv.target}</p>
+                    <p className="text-xs capitalize" style={{ color: 'var(--color-muted)' }}>
+                      {inv.type} · {inv.createdAt ? formatDate(inv.createdAt) : ''}
+                    </p>
+                    {inv.notes && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-muted)' }}>{inv.notes}</p>}
+                  </div>
+                </Link>
                 <DeleteButton id={inv.id} />
               </div>
             )
