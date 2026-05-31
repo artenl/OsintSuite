@@ -4,7 +4,7 @@ import { apiKeys } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-const ALLOWED = ['virustotal', 'shodan', 'hibp', 'urlscan']
+const ALLOWED = ['virustotal', 'shodan', 'hibp', 'urlscan', 'gemini', 'abusech']
 
 function requireAdmin(req: NextRequest) {
   return req.headers.get('x-user-role') !== 'admin'
@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest) {
   if (requireAdmin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => null)
-  const parsed = z.object({ service: z.enum(['virustotal', 'shodan', 'hibp', 'urlscan']), key: z.string().min(1) }).safeParse(body)
+  const parsed = z.object({ service: z.enum(['virustotal', 'shodan', 'hibp', 'urlscan', 'gemini', 'abusech']), key: z.string().min(1) }).safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid' }, { status: 400 })
 
   const { service, key } = parsed.data

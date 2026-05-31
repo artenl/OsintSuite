@@ -33,10 +33,12 @@ interface ServiceCredit {
 }
 
 const API_SERVICES = [
+  { id: 'gemini', label: 'Google Gemini', description: 'AI insights & analysis (free key at aistudio.google.com)' },
   { id: 'virustotal', label: 'VirusTotal', description: 'Domain/IP reputation (free: 500 req/day)' },
   { id: 'shodan', label: 'Shodan', description: 'Port scanning & host info' },
   { id: 'hibp', label: 'HaveIBeenPwned', description: 'Email breach lookup' },
-  { id: 'urlscan', label: 'URLScan.io', description: 'URL & domain analysis' },
+  { id: 'urlscan', label: 'URLScan.io', description: 'URL & domain analysis (optional — search works without a key)' },
+  { id: 'abusech', label: 'abuse.ch', description: 'Threat intel / URLhaus (free Auth-Key at auth.abuse.ch)' },
 ]
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -44,6 +46,8 @@ const SERVICE_LABELS: Record<string, string> = {
   virustotal: 'VirusTotal',
   urlscan: 'URLScan.io',
   hibp: 'HaveIBeenPwned',
+  gemini: 'Google Gemini',
+  abusech: 'abuse.ch',
 }
 
 export default function SettingsPage() {

@@ -3,12 +3,20 @@
 import { useState } from 'react'
 import {
   Globe, Search, Loader2, ChevronDown, ChevronUp, Save,
-  AlertCircle, CheckCircle, Clock, Copy, Check
+  AlertCircle, CheckCircle, Clock, Copy, Check, Sparkles, ShieldAlert
 } from 'lucide-react'
 
 type ToolStatus = 'idle' | 'loading' | 'done' | 'error'
 type ToolResult = { status: ToolStatus; data?: unknown; error?: string }
 type Results = Record<string, ToolResult>
+
+type Insights = {
+  riskLevel: 'low' | 'medium' | 'high' | 'unknown'
+  summary: string
+  keyFindings: string[]
+  recommendedNextSteps: string[]
+  model?: string
+}
 
 const TOOLS = [
   { id: 'whois', label: 'WHOIS' },
@@ -16,7 +24,12 @@ const TOOLS = [
   { id: 'ssl', label: 'SSL Certificate' },
   { id: 'geoip', label: 'GeoIP / ASN' },
   { id: 'headers', label: 'HTTP Headers' },
+  { id: 'subdomains', label: 'Subdomains (crt.sh)' },
   { id: 'shodan', label: 'Shodan' },
+  { id: 'internetdb', label: 'InternetDB — Ports & CVEs' },
+  { id: 'virustotal', label: 'VirusTotal' },
+  { id: 'urlscan', label: 'URLScan.io' },
+  { id: 'threat', label: 'Threat Intel (abuse.ch)' },
 ]
 
 export default function DomainPage() {
@@ -27,6 +40,9 @@ export default function DomainPage() {
   const [saved, setSaved] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [insights, setInsights] = useState<Insights | null>(null)
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [insightsError, setInsightsError] = useState('')
 
   async function runTool(toolId: string, t: string) {
     setResults((prev) => ({ ...prev, [toolId]: { status: 'loading' } }))
@@ -52,10 +68,34 @@ export default function DomainPage() {
     const t = target.trim().replace(/^https?:\/\//, '').split('/')[0]
     setResults({})
     setSaved(false)
+    setInsights(null)
+    setInsightsError('')
     setRunning(true)
     setExpanded(Object.fromEntries(TOOLS.map((t) => [t.id, true])))
     await Promise.all(TOOLS.map((tool) => runTool(tool.id, t)))
     setRunning(false)
+  }
+
+  async function generateInsights() {
+    const t = target.trim().replace(/^https?:\/\//, '').split('/')[0]
+    const isIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(t)
+    setInsightsLoading(true)
+    setInsightsError('')
+    setInsights(null)
+    try {
+      const res = await fetch('/api/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: t, type: isIp ? 'ip' : 'domain', results }),
+      })
+      const data = await res.json()
+      if (!res.ok) setInsightsError(data.error || 'Analysis failed')
+      else setInsights(data)
+    } catch (err) {
+      setInsightsError(String(err))
+    } finally {
+      setInsightsLoading(false)
+    }
   }
 
   async function saveInvestigation() {
@@ -175,6 +215,16 @@ export default function DomainPage() {
         </div>
       )}
 
+      {/* AI Insights */}
+      {hasResults && !running && (
+        <InsightsPanel
+          insights={insights}
+          loading={insightsLoading}
+          error={insightsError}
+          onGenerate={generateInsights}
+        />
+      )}
+
       {/* Results */}
       {TOOLS.map((tool) => {
         const result = results[tool.id]
@@ -244,6 +294,111 @@ function ResultCard({
             <p className="text-sm" style={{ color: 'var(--color-red)' }}>Error: {result.error}</p>
           )}
           {result.status === 'done' && <DataRenderer data={result.data} />}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const RISK_STYLE: Record<string, { bg: string; border: string; color: string; label: string }> = {
+  high: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.35)', color: 'var(--color-red)', label: 'HIGH RISK' },
+  medium: { bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.35)', color: '#f59e0b', label: 'MEDIUM RISK' },
+  low: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', color: 'var(--color-green)', label: 'LOW RISK' },
+  unknown: { bg: 'rgba(255,255,255,0.05)', border: 'var(--color-border)', color: 'var(--color-muted)', label: 'UNKNOWN' },
+}
+
+function InsightsPanel({
+  insights,
+  loading,
+  error,
+  onGenerate,
+}: {
+  insights: Insights | null
+  loading: boolean
+  error: string
+  onGenerate: () => void
+}) {
+  const risk = insights ? (RISK_STYLE[insights.riskLevel] ?? RISK_STYLE.unknown) : null
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{
+      background: 'var(--color-surface)',
+      border: '1px solid rgba(0,212,255,0.25)',
+    }}>
+      <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: insights || error ? '1px solid var(--color-border)' : 'none' }}>
+        <Sparkles size={15} style={{ color: 'var(--color-cyan)' }} />
+        <span className="text-sm font-semibold flex-1" style={{ color: 'var(--color-text)' }}>AI Insights</span>
+        {risk && (
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+            style={{ background: risk.bg, border: `1px solid ${risk.border}`, color: risk.color }}>
+            <ShieldAlert size={11} /> {risk.label}
+          </span>
+        )}
+        <button
+          onClick={onGenerate}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+          style={{
+            background: 'rgba(0,212,255,0.12)',
+            border: '1px solid rgba(0,212,255,0.3)',
+            color: 'var(--color-cyan)',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+          {loading ? 'Analyzing…' : insights ? 'Regenerate' : 'Generate analysis'}
+        </button>
+      </div>
+
+      {(insights || error || loading) && (
+        <div className="p-4 space-y-4">
+          {loading && !insights && (
+            <p className="text-sm flex items-center gap-2" style={{ color: 'var(--color-muted)' }}>
+              <Loader2 size={14} className="animate-spin" /> Analyzing the collected evidence…
+            </p>
+          )}
+          {error && <p className="text-sm" style={{ color: 'var(--color-red)' }}>{error}</p>}
+
+          {insights && (
+            <>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text)' }}>{insights.summary}</p>
+
+              {insights.keyFindings?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted)' }}>Key Findings</p>
+                  <ul className="space-y-1.5">
+                    {insights.keyFindings.map((f, i) => (
+                      <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--color-text)' }}>
+                        <span style={{ color: 'var(--color-cyan)' }}>•</span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {insights.recommendedNextSteps?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted)' }}>Recommended Next Steps</p>
+                  <ul className="space-y-1.5">
+                    {insights.recommendedNextSteps.map((s, i) => (
+                      <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--color-text)' }}>
+                        <span style={{ color: 'var(--color-green)' }}>→</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {insights.model && (
+                <p className="text-xs pt-1" style={{ color: 'var(--color-muted)' }}>
+                  Generated by {insights.model} · AI-generated, verify before acting
+                </p>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

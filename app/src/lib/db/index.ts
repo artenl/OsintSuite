@@ -12,6 +12,9 @@ fs.mkdirSync(path.dirname(dbPath), { recursive: true })
 const sqlite = new Database(dbPath)
 sqlite.pragma('journal_mode = WAL')
 sqlite.pragma('foreign_keys = ON')
+// Wait for locks instead of failing instantly. Without this, parallel imports
+// (e.g. Next.js collecting page data across routes during build) throw SQLITE_BUSY.
+sqlite.pragma('busy_timeout = 5000')
 
 export const db = drizzle(sqlite, { schema })
 
@@ -51,10 +54,12 @@ if (!existing) {
   const adminPassword = process.env.ADMIN_PASSWORD || 'changeme'
   const hash = hashSync(adminPassword, 12)
   const id = crypto.randomUUID()
-  sqlite
+  // OR IGNORE guards against a race when multiple connections bootstrap a fresh
+  // DB at once (parallel route imports during build) and the UNIQUE username collides.
+  const info = sqlite
     .prepare(
-      'INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)'
+      'INSERT OR IGNORE INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)'
     )
     .run(id, adminUsername, hash, 'admin', Math.floor(Date.now() / 1000))
-  console.log(`[db] Created admin user: ${adminUsername}`)
+  if (info.changes > 0) console.log(`[db] Created admin user: ${adminUsername}`)
 }

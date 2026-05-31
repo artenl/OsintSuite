@@ -5,3 +5,10 @@ node_modules/
 *.db-wal
 .env
 !.env.example
+
+# Build artifacts
+next-env.d.ts
+*.tsbuildinfo
+
+# Agent / session metadata
+.claude/
