@@ -18,6 +18,7 @@ type VerifyResult = {
   Target: string; Verdict: string; Probes: string; Fingerprints?: string
   _verdict: 'open' | 'protected' | 'reachable' | 'unreachable'
 }
+type VState = { status: 'loading' } | { status: 'done'; result: VerifyResult }
 
 // Curated camera search presets (product strings verified against Shodan facets).
 const CAMERA_PRESETS: { label: string; query: string }[] = [
@@ -200,12 +201,53 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
   const [country, setCountry] = useState('')
   const [port, setPort] = useState('')
   const [org, setOrg] = useState('')
+  const [verdicts, setVerdicts] = useState<Record<string, VState>>({})
+  const [autoVerify, setAutoVerify] = useState(true)
+  const [onlyOpen, setOnlyOpen] = useState(false)
+
+  // Verify a batch of hosts concurrently (pool of 8), updating each as it lands.
+  const verifyAll = useCallback(async (ms: SearchMatch[]) => {
+    let idx = 0
+    const worker = async () => {
+      while (idx < ms.length) {
+        const m = ms[idx++]
+        const key = `${m.ip}:${m.port}`
+        setVerdicts((v) => ({ ...v, [key]: { status: 'loading' } }))
+        try {
+          const res = await fetch('/api/tools/exposure', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: m.ip, port: m.port }),
+          })
+          const result = await res.json()
+          setVerdicts((v) => ({ ...v, [key]: { status: 'done', result } }))
+        } catch {
+          setVerdicts((v) => ({ ...v, [key]: { status: 'done', result: { _verdict: 'unreachable', Target: m.ip, Verdict: 'check failed', Probes: '' } } }))
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(8, ms.length) }, worker))
+  }, [])
+
+  const verifyOne = useCallback(async (m: SearchMatch) => {
+    const key = `${m.ip}:${m.port}`
+    setVerdicts((v) => ({ ...v, [key]: { status: 'loading' } }))
+    try {
+      const res = await fetch('/api/tools/exposure', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: m.ip, port: m.port }),
+      })
+      const result = await res.json()
+      setVerdicts((v) => ({ ...v, [key]: { status: 'done', result } }))
+    } catch {
+      setVerdicts((v) => ({ ...v, [key]: { status: 'done', result: { _verdict: 'unreachable', Target: m.ip, Verdict: 'check failed', Probes: '' } } }))
+    }
+  }, [])
 
   const run = useCallback(async (qOverride?: string) => {
     const q = (qOverride ?? query).trim()
     if (!q) return
     setQuery(q)
-    setLoading(true); setError(''); setMatches([]); setFacets({})
+    setLoading(true); setError(''); setMatches([]); setFacets({}); setVerdicts({}); setOnlyOpen(false)
     try {
       const res = await fetch('/api/shodan/search', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -213,9 +255,12 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
       })
       const d = await res.json()
       if (!res.ok) setError(d.error || 'Search failed')
-      else { setMatches(d.matches || []); setFacets(d.facets || {}); setTotal(d.total || 0) }
+      else {
+        setMatches(d.matches || []); setFacets(d.facets || {}); setTotal(d.total || 0)
+        if (autoVerify && d.matches?.length) verifyAll(d.matches)
+      }
     } catch (err) { setError(String(err)) } finally { setLoading(false) }
-  }, [query, setQuery])
+  }, [query, setQuery, autoVerify, verifyAll])
 
   // Run automatically when a suggestion / catalog row triggers a search.
   useEffect(() => {
@@ -239,6 +284,17 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
   }, [country, port, org])
 
   const hasFilters = !!(country.trim() || port.trim() || org.trim())
+
+  const verdictOf = (m: SearchMatch): VerifyResult['_verdict'] | undefined => {
+    const s = verdicts[`${m.ip}:${m.port}`]
+    return s && s.status === 'done' ? s.result._verdict : undefined
+  }
+  const openCount = matches.filter((m) => verdictOf(m) === 'open').length
+  const protectedCount = matches.filter((m) => verdictOf(m) === 'protected').length
+  const offlineCount = matches.filter((m) => { const v = verdictOf(m); return v === 'unreachable' || v === 'reachable' }).length
+  const checkingCount = matches.filter((m) => verdicts[`${m.ip}:${m.port}`]?.status === 'loading').length
+  const verifiedCount = openCount + protectedCount + offlineCount + checkingCount
+  const displayMatches = onlyOpen ? matches.filter((m) => verdictOf(m) === 'open') : matches
 
   return (
     <div className="space-y-4">
@@ -272,9 +328,12 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
                 className="text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>clear filters</button>
             )}
           </div>
-          <p className="text-xs mt-3" style={{ color: 'var(--color-muted)' }}>
-            Set filters, then click a model above (applies instantly) or <strong>Apply to current search</strong>. Then use <strong>Verify exposure</strong> on each result before contacting owners.
-          </p>
+          <label className="flex items-center gap-2 mt-3 cursor-pointer w-fit">
+            <input type="checkbox" checked={autoVerify} onChange={(e) => setAutoVerify(e.target.checked)} />
+            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+              Auto-verify exposure on every result (filters out false positives — no feeds opened)
+            </span>
+          </label>
         </div>
       </div>
 
@@ -293,7 +352,28 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
       {error && <p className="text-sm" style={{ color: 'var(--color-red)' }}>{error}</p>}
 
       {total > 0 && (
-        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{total.toLocaleString()} total results · showing {matches.length}</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{total.toLocaleString()} total · showing {matches.length}</p>
+          {verifiedCount > 0 && (
+            <>
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>·</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--color-red)' }}>{openCount} open</span>
+              <span className="text-xs" style={{ color: 'var(--color-green)' }}>{protectedCount} protected</span>
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{offlineCount} offline</span>
+              {checkingCount > 0 && (
+                <span className="text-xs flex items-center gap-1" style={{ color: 'var(--color-cyan)' }}>
+                  <Loader2 size={10} className="animate-spin" /> {checkingCount} checking
+                </span>
+              )}
+              {openCount > 0 && (
+                <label className="flex items-center gap-1.5 ml-auto cursor-pointer">
+                  <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
+                  <span className="text-xs" style={{ color: 'var(--color-text)' }}>Show only open</span>
+                </label>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {Object.keys(facets).length > 0 && (
@@ -313,30 +393,43 @@ function SearchTab({ query, setQuery, runSignal }: { query: string; setQuery: (v
       )}
 
       <div className="space-y-2">
-        {matches.map((m, i) => <MatchRow key={`${m.ip}:${m.port}:${i}`} m={m} />)}
+        {displayMatches.map((m, i) => (
+          <MatchRow key={`${m.ip}:${m.port}:${i}`} m={m} vstate={verdicts[`${m.ip}:${m.port}`]} onVerify={() => verifyOne(m)} />
+        ))}
+        {onlyOpen && displayMatches.length === 0 && (
+          <p className="text-sm text-center py-6" style={{ color: 'var(--color-muted)' }}>No confirmed-open hosts in this result set.</p>
+        )}
       </div>
     </div>
   )
 }
 
-function MatchRow({ m }: { m: SearchMatch }) {
-  const [verify, setVerify] = useState<VerifyResult | null>(null)
-  const [loading, setLoading] = useState(false)
+const BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  open: { label: 'OPEN', color: 'var(--color-red)', bg: 'rgba(239,68,68,0.12)' },
+  protected: { label: 'protected', color: 'var(--color-green)', bg: 'rgba(34,197,94,0.1)' },
+  reachable: { label: 'reachable', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  unreachable: { label: 'offline', color: 'var(--color-muted)', bg: 'rgba(255,255,255,0.04)' },
+}
 
-  async function check() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/tools/exposure', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: m.ip, port: m.port }),
-      })
-      setVerify(await res.json())
-    } finally { setLoading(false) }
-  }
+function MatchRow({ m, vstate, onVerify }: { m: SearchMatch; vstate?: VState; onVerify: () => void }) {
+  const [open, setOpen] = useState(false)
+  const verdict = vstate?.status === 'done' ? vstate.result._verdict : undefined
+  const badge = verdict ? BADGE[verdict] : null
+  const loading = vstate?.status === 'loading'
 
   return (
-    <div className="rounded-lg p-3" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+    <div className="rounded-lg p-3" style={{
+      background: 'var(--color-surface)',
+      border: `1px solid ${verdict === 'open' ? 'rgba(239,68,68,0.3)' : 'var(--color-border)'}`,
+    }}>
       <div className="flex items-center gap-3 flex-wrap">
+        {loading ? (
+          <span className="text-xs flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.1)', color: 'var(--color-cyan)' }}>
+            <Loader2 size={10} className="animate-spin" /> checking
+          </span>
+        ) : badge ? (
+          <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
+        ) : null}
         <span className="text-sm font-mono font-semibold" style={{ color: 'var(--color-text)' }}>{m.ip}:{m.port}</span>
         {m.product && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.08)', color: 'var(--color-cyan)' }}>{m.product}</span>}
         {m.country && <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{m.city ? `${m.city}, ` : ''}{m.country}</span>}
@@ -347,16 +440,21 @@ function MatchRow({ m }: { m: SearchMatch }) {
             style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-cyan)', textDecoration: 'none' }}>
             <ExternalLink size={11} /> Shodan
           </a>
-          <button onClick={check} disabled={loading}
+          <button onClick={() => { onVerify(); setOpen(true) }} disabled={loading}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
             style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.3)', color: 'var(--color-purple)', cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />} Verify exposure
+            {loading ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />} Re-check
           </button>
         </div>
       </div>
       {m.title && <p className="text-xs mt-1 truncate" style={{ color: 'var(--color-muted)' }}>{m.title}</p>}
       {m.org && <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>{m.org}</p>}
-      {verify && <VerdictBox v={verify} />}
+      {vstate?.status === 'done' && (
+        <button onClick={() => setOpen((o) => !o)} className="text-xs mt-1" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>
+          {open ? 'hide probe detail' : 'show probe detail'}
+        </button>
+      )}
+      {open && vstate?.status === 'done' && <VerdictBox v={vstate.result} />}
     </div>
   )
 }
