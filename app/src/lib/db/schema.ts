@@ -27,7 +27,19 @@ export const apiKeys = sqliteTable('api_keys', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 })
 
+// Reference catalog of the most common camera/device products (from Shodan facet
+// counts). Stores product names + how many are exposed — metadata only, no feeds/IPs.
+export const cameraCatalog = sqliteTable('camera_catalog', {
+  id: text('id').primaryKey(),
+  rank: integer('rank').notNull(),
+  product: text('product').notNull(),
+  count: integer('count').notNull(),
+  query: text('query').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+})
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Investigation = typeof investigations.$inferSelect
 export type ApiKey = typeof apiKeys.$inferSelect
+export type CameraCatalogEntry = typeof cameraCatalog.$inferSelect

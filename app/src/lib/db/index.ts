@@ -47,6 +47,15 @@ sqlite.exec(`
     key_value TEXT NOT NULL,
     updated_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS camera_catalog (
+    id TEXT PRIMARY KEY,
+    rank INTEGER NOT NULL,
+    product TEXT NOT NULL,
+    count INTEGER NOT NULL,
+    query TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
 `)
 
 const existing = sqlite.prepare('SELECT id FROM users WHERE role = ?').get('admin')

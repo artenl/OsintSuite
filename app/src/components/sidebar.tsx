@@ -8,6 +8,7 @@ import {
   FolderSearch,
   Settings,
   Shield,
+  Radar,
   LogOut,
   ChevronRight,
 } from 'lucide-react'
@@ -23,6 +24,7 @@ const NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Domain / IP', href: '/domain', icon: Globe },
   { label: 'Person', href: '/person', icon: User },
+  { label: 'Shodan', href: '/shodan', icon: Radar },
   { label: 'Investigations', href: '/investigations', icon: FolderSearch },
   { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
 ]
