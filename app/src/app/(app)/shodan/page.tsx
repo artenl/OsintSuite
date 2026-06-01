@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Radar, Search, Loader2, RefreshCw, ShieldCheck, AlertTriangle, Lock,
-  Wifi, WifiOff, Camera, ExternalLink,
+  Wifi, WifiOff, Camera, ExternalLink, Network,
 } from 'lucide-react'
 
-type Tab = 'cameras' | 'search' | 'verify'
+type Tab = 'cameras' | 'search' | 'verify' | 'dns'
 
 type CameraEntry = { rank: number; product: string; count: number }
 type SearchMatch = {
@@ -79,6 +79,7 @@ export default function ShodanPage() {
         {[
           { id: 'cameras', label: 'Top Cameras', icon: Camera },
           { id: 'search', label: 'Device Search', icon: Search },
+          { id: 'dns', label: 'DNS Pivot', icon: Network },
           { id: 'verify', label: 'Exposure Check', icon: ShieldCheck },
         ].map((t) => (
           <button key={t.id} onClick={() => setTab(t.id as Tab)}
@@ -95,6 +96,7 @@ export default function ShodanPage() {
 
       {tab === 'cameras' && <CamerasTab role={role} onSearch={runSearch} />}
       {tab === 'search' && <SearchTab query={searchQuery} setQuery={setSearchQuery} runSignal={runSignal} />}
+      {tab === 'dns' && <DnsTab />}
       {tab === 'verify' && <VerifyTab />}
     </div>
   )
@@ -448,6 +450,57 @@ function MatchRow({ m, vstate, onVerify }: { m: SearchMatch; vstate?: VState; on
         </button>
       )}
       {open && vstate?.status === 'done' && <VerdictBox v={vstate.result} />}
+    </div>
+  )
+}
+
+function DnsTab() {
+  const [target, setTarget] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [data, setData] = useState<Record<string, string> | null>(null)
+
+  async function run() {
+    if (!target.trim()) return
+    setLoading(true); setError(''); setData(null)
+    try {
+      const res = await fetch('/api/tools/shodan-dns', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: target.trim() }),
+      })
+      const d = await res.json()
+      if (!res.ok) setError(d.error || 'Lookup failed')
+      else setData(d)
+    } catch (err) { setError(String(err)) } finally { setLoading(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+        Passive DNS via Shodan. Enter a <strong>domain</strong> for its subdomains + observed DNS records, or an <strong>IP</strong> for reverse PTR.
+      </p>
+      <div className="flex gap-2">
+        <input value={target} onChange={(e) => setTarget(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && run()}
+          placeholder="example.com  or  8.8.8.8"
+          className="flex-1 px-3 py-2.5 rounded-lg text-sm outline-none font-mono"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
+        <button onClick={run} disabled={loading || !target.trim()}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold"
+          style={{ background: 'rgba(51,255,153,0.15)', border: '1px solid rgba(51,255,153,0.4)', color: 'var(--color-cyan)', cursor: loading || !target.trim() ? 'not-allowed' : 'pointer', opacity: loading || !target.trim() ? 0.6 : 1 }}>
+          {loading ? <Loader2 size={15} className="animate-spin" /> : <Network size={15} />} Look up
+        </button>
+      </div>
+      {error && <p className="text-sm" style={{ color: 'var(--color-red)' }}>{error}</p>}
+      {data && (
+        <div className="rounded-xl p-4 space-y-1.5" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          {Object.entries(data).map(([k, v]) => (
+            <div key={k} className="flex gap-3 py-1 text-sm" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <span className="font-mono text-xs w-36 flex-shrink-0 pt-0.5" style={{ color: 'var(--color-muted)' }}>{k}</span>
+              <span className="font-mono text-xs flex-1 break-all whitespace-pre-wrap" style={{ color: 'var(--color-text)' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

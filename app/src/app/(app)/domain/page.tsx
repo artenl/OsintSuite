@@ -18,6 +18,7 @@ const TOOLS = [
   { id: 'geoip', label: 'GeoIP / ASN' },
   { id: 'headers', label: 'HTTP Headers' },
   { id: 'subdomains', label: 'Subdomains (crt.sh)' },
+  { id: 'shodan-dns', label: 'Shodan DNS / Subdomains' },
   { id: 'shodan', label: 'Shodan' },
   { id: 'internetdb', label: 'InternetDB — Ports & CVEs' },
   { id: 'virustotal', label: 'VirusTotal' },
