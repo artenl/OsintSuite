@@ -32,7 +32,7 @@ const MODE_TOOLS: Record<Mode, string[]> = {
   username: ['username', 'github'],
   email: ['email', 'gravatar'],
   name: [],
-  phone: [],
+  phone: ['phone'],
 }
 
 const MODES: { id: Mode; label: string; icon: React.ComponentType<{ size?: number }>, placeholder: string }[] = [
@@ -201,6 +201,7 @@ export default function PersonPage() {
   const emailResult = results.email?.status === 'done' ? (results.email.data as EmailResults) : null
   const githubResult = results.github?.status === 'done' ? (results.github.data as Record<string, string>) : null
   const gravatarResult = results.gravatar?.status === 'done' ? (results.gravatar.data as Record<string, string>) : null
+  const phoneResult = results.phone?.status === 'done' ? (results.phone.data as Record<string, string>) : null
 
   const doneTools = Object.values(results).filter((r) => r.status === 'done').length
   const hasToolResults = doneTools > 0
@@ -410,6 +411,9 @@ export default function PersonPage() {
           </p>
         </div>
       )}
+
+      {/* Phone intelligence (parsed) */}
+      {phoneResult && <ProfileCard title="Phone Intelligence" data={phoneResult} accent="var(--color-purple)" />}
 
       {/* Phone direct lookups */}
       {mode === 'phone' && dorks.length > 0 && (

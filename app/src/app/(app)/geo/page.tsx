@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Search, Loader2, Sparkles, Play, ExternalLink, Crosshair } from 'lucide-react'
+import { MapPin, Search, Loader2, Sparkles, Play, ExternalLink, Crosshair, Image as ImageIcon } from 'lucide-react'
 
 type Center = { lat: number; lon: number; label?: string }
 type PlaceResult = { displayName: string; lat: number; lon: number; type?: string }
@@ -24,6 +24,11 @@ export default function GeoPage() {
   const [placeLoading, setPlaceLoading] = useState(false)
   const [placeError, setPlaceError] = useState('')
   const [center, setCenter] = useState<Center | null>(null)
+
+  // EXIF photo → GPS
+  const [exif, setExif] = useState<Record<string, string> | null>(null)
+  const [exifLoading, setExifLoading] = useState(false)
+  const [exifError, setExifError] = useState('')
 
   // AI query builder
   const [prompt, setPrompt] = useState('')
@@ -50,6 +55,27 @@ export default function GeoPage() {
       if (!res.ok) setPlaceError(d.error || 'Lookup failed')
       else setPlaces(d.results || [])
     } catch (err) { setPlaceError(String(err)) } finally { setPlaceLoading(false) }
+  }
+
+  function onExifFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setExifLoading(true); setExifError(''); setExif(null)
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        const res = await fetch('/api/tools/exif', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl: reader.result }),
+        })
+        const d = await res.json()
+        if (!res.ok) setExifError(d.error || 'EXIF extraction failed')
+        else setExif(d)
+      } catch (err) { setExifError(String(err)) } finally { setExifLoading(false) }
+    }
+    reader.onerror = () => { setExifError('Could not read file'); setExifLoading(false) }
+    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   function useCoordsInput() {
@@ -156,6 +182,39 @@ export default function GeoPage() {
             <button onClick={() => setCenter(null)} className="text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>clear</button>
           </div>
         )}
+
+        {/* Photo GPS extraction */}
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+          <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer"
+            style={{ background: 'rgba(255,180,84,0.1)', border: '1px solid rgba(255,180,84,0.25)', color: 'var(--color-purple)' }}>
+            {exifLoading ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}
+            Extract GPS from a photo
+            <input type="file" accept="image/*" onChange={onExifFile} style={{ display: 'none' }} />
+          </label>
+          <span className="text-xs ml-2" style={{ color: 'var(--color-muted)' }}>parsed locally — never leaves your server</span>
+
+          {exifError && <p className="text-xs mt-2" style={{ color: 'var(--color-red)' }}>{exifError}</p>}
+
+          {exif && (
+            <div className="mt-2 rounded-lg p-3 space-y-1" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+              {Object.entries(exif).filter(([k]) => !k.startsWith('_')).map(([k, v]) => (
+                <div key={k} className="flex gap-3 text-xs">
+                  <span className="font-mono w-28 flex-shrink-0" style={{ color: 'var(--color-muted)' }}>{k}</span>
+                  {/^https?:\/\//.test(v)
+                    ? <a href={v} target="_blank" rel="noopener noreferrer" className="font-mono flex-1 break-all" style={{ color: 'var(--color-cyan)' }}>{v}</a>
+                    : <span className="font-mono flex-1 break-all" style={{ color: 'var(--color-text)' }}>{v}</span>}
+                </div>
+              ))}
+              {exif._lat && exif._lon && (
+                <button onClick={() => setCenter({ lat: Number(exif._lat), lon: Number(exif._lon), label: 'photo GPS' })}
+                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                  style={{ background: 'rgba(51,255,153,0.15)', border: '1px solid rgba(51,255,153,0.4)', color: 'var(--color-cyan)', cursor: 'pointer' }}>
+                  <Crosshair size={12} /> Use these coordinates as reference
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </Section>
 
       {/* 2. AI query builder */}

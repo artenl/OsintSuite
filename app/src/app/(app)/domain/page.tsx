@@ -17,6 +17,7 @@ const TOOLS = [
   { id: 'ssl', label: 'SSL Certificate' },
   { id: 'geoip', label: 'GeoIP / ASN' },
   { id: 'headers', label: 'HTTP Headers' },
+  { id: 'wayback', label: 'Wayback / Archive' },
   { id: 'subdomains', label: 'Subdomains (crt.sh)' },
   { id: 'shodan-dns', label: 'Shodan DNS / Subdomains' },
   { id: 'shodan', label: 'Shodan' },
