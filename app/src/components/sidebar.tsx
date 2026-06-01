@@ -9,6 +9,7 @@ import {
   Settings,
   Shield,
   Radar,
+  MapPin,
   LogOut,
   ChevronRight,
 } from 'lucide-react'
@@ -25,6 +26,7 @@ const NAV: NavItem[] = [
   { label: 'Domain / IP', href: '/domain', icon: Globe },
   { label: 'Person', href: '/person', icon: User },
   { label: 'Shodan', href: '/shodan', icon: Radar },
+  { label: 'Geo / OSM', href: '/geo', icon: MapPin },
   { label: 'Investigations', href: '/investigations', icon: FolderSearch },
   { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
 ]

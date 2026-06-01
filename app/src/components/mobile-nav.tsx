@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Globe, User, Radar, FolderSearch, Settings } from 'lucide-react'
+import { LayoutDashboard, Globe, User, Radar, MapPin, FolderSearch, Settings } from 'lucide-react'
 
 interface MobileNavProps {
   role: string
@@ -12,6 +12,7 @@ const NAV = [
   { label: 'Domain', href: '/domain', icon: Globe },
   { label: 'Person', href: '/person', icon: User },
   { label: 'Shodan', href: '/shodan', icon: Radar },
+  { label: 'Geo', href: '/geo', icon: MapPin },
   { label: 'History', href: '/investigations', icon: FolderSearch },
   { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
 ]
