@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
+import { geocoder, carrier, timezones } from 'libphonenumber-geo-carrier'
 import { z } from 'zod'
 
 const schema = z.object({ target: z.string().min(1).max(40) })
@@ -48,6 +49,19 @@ export async function POST(req: NextRequest) {
   result['International'] = phone.formatInternational()
   result['National'] = phone.formatNational()
   result['E.164'] = phone.number
+
+  // Carrier / region / timezone mapping (offline metadata).
+  try {
+    const [region, car, tz] = await Promise.all([
+      geocoder(phone).catch(() => null),
+      carrier(phone).catch(() => null),
+      timezones(phone).catch(() => null),
+    ])
+    if (region) result['Region'] = region
+    if (car) result['Carrier'] = car
+    if (Array.isArray(tz) && tz.length) result['Timezone'] = tz.join(', ')
+  } catch { /* metadata optional */ }
+
   result['Dial URI'] = phone.getURI()
 
   return NextResponse.json(result)

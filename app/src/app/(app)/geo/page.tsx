@@ -43,6 +43,11 @@ export default function GeoPage() {
   const [runError, setRunError] = useState('')
   const [truncated, setTruncated] = useState(false)
 
+  // AI summary
+  const [ai, setAi] = useState<{ summary: string; observations: string[]; leads: string[]; model?: string } | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState('')
+
   async function findPlace() {
     if (!placeQuery.trim()) return
     setPlaceLoading(true); setPlaceError(''); setPlaces([])
@@ -102,7 +107,7 @@ export default function GeoPage() {
 
   async function run() {
     if (!ql.trim()) return
-    setRunLoading(true); setRunError(''); setFeatures(null)
+    setRunLoading(true); setRunError(''); setFeatures(null); setAi(null); setAiError('')
     try {
       const res = await fetch('/api/geo/overpass', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -112,6 +117,25 @@ export default function GeoPage() {
       if (!res.ok) setRunError(d.error || 'Query failed')
       else { setFeatures(d.features || []); setTruncated(!!d.truncated) }
     } catch (err) { setRunError(String(err)) } finally { setRunLoading(false) }
+  }
+
+  async function summarize() {
+    if (!features?.length) return
+    setAiLoading(true); setAiError(''); setAi(null)
+    try {
+      const res = await fetch('/api/geo/summary', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: ql,
+          center: center ? { lat: center.lat, lon: center.lon } : undefined,
+          total: features.length,
+          features: features.slice(0, 120).map((f) => ({ label: f.label, name: f.name, lat: f.lat, lon: f.lon })),
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok) setAiError(d.error || 'Summary failed')
+      else setAi(d)
+    } catch (err) { setAiError(String(err)) } finally { setAiLoading(false) }
   }
 
   const turboUrl = ql.trim() ? `https://overpass-turbo.eu/?Q=${encodeURIComponent(ql)}` : null
@@ -271,9 +295,48 @@ export default function GeoPage() {
 
           {features && (
             <div className="mt-3">
-              <p className="text-xs mb-2" style={{ color: 'var(--color-muted)' }}>
-                {features.length} feature{features.length !== 1 ? 's' : ''}{truncated ? ' (showing first 300)' : ''}
-              </p>
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                  {features.length} feature{features.length !== 1 ? 's' : ''}{truncated ? ' (showing first 300)' : ''}
+                </p>
+                {features.length > 0 && (
+                  <button onClick={summarize} disabled={aiLoading}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
+                    style={{ background: 'rgba(51,255,153,0.12)', border: '1px solid rgba(51,255,153,0.3)', color: 'var(--color-cyan)', cursor: aiLoading ? 'not-allowed' : 'pointer', opacity: aiLoading ? 0.6 : 1 }}>
+                    {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                    {ai ? 'Regenerate AI summary' : 'AI summary'}
+                  </button>
+                )}
+              </div>
+
+              {aiError && <p className="text-xs mb-2" style={{ color: 'var(--color-red)' }}>{aiError}</p>}
+              {ai && (
+                <div className="mb-3 rounded-lg p-3 space-y-3" style={{ background: 'var(--color-surface-2)', border: '1px solid rgba(51,255,153,0.25)' }}>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text)' }}>{ai.summary}</p>
+                  {ai.observations?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-muted)' }}>Observations</p>
+                      <ul className="space-y-1">
+                        {ai.observations.map((o, i) => (
+                          <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--color-text)' }}><span style={{ color: 'var(--color-cyan)' }}>•</span><span>{o}</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {ai.leads?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-muted)' }}>Investigative Leads</p>
+                      <ul className="space-y-1">
+                        {ai.leads.map((l, i) => (
+                          <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--color-text)' }}><span style={{ color: 'var(--color-green)' }}>→</span><span>{l}</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {ai.model && <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Generated by {ai.model} · AI-generated, verify before acting</p>}
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 {features.map((f) => (
                   <div key={`${f.type}/${f.id}`} className="flex items-center gap-3 px-3 py-2 rounded-lg flex-wrap" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
