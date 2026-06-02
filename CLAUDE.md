@@ -9,9 +9,9 @@ Self-hosted OSINT investigation platform running on a Hostinger VPS.
 - Docker Compose + Traefik (pre-installed on Hostinger VPS)
 
 ## Deployment
-- VPS: ***REMOVED-IP*** (Debian 13, Frankfurt)
-- URL: https://your-domain.example.com
-- SSH key: ***REMOVED-KEY-PATH*** (ed25519)
+- VPS: <VPS_IP> (Debian 13, Frankfurt) — set in your local deploy notes, not committed
+- URL: https://<your-domain>
+- SSH key: <path-to-deploy-key> (ed25519)
 - Deploy: `rsync` app/ → /opt/osint-suite/app/ then `docker compose build app && docker compose up -d --force-recreate app`
 
 ## Dev
@@ -28,8 +28,8 @@ cd app && npm run dev   # port 3000
 - `app/src/middleware.ts` — JWT validation, injects x-user-id/x-user-role headers
 
 ## Admin credentials
-- Username: admin / Password: ***REMOVED***
-- DB seeded from env vars (ADMIN_USERNAME, ADMIN_PASSWORD) on first run
+- Username + password are set via env vars (ADMIN_USERNAME, ADMIN_PASSWORD) and seeded into the DB on first run
+- Never commit real credentials — keep them in `.env` (gitignored)
 
 ## API Keys stored in DB
 - virustotal, shodan, hibp, urlscan
