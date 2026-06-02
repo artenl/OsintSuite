@@ -15,7 +15,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.osint-suite.entrypoints=websecure"
-      - "traefik.http.routers.osint-suite.rule=Host(`your-domain.example.com`)"
+      - "traefik.http.routers.osint-suite.rule=Host(`${DOMAIN:-your-domain.example.com}`)"
       - "traefik.http.routers.osint-suite.tls.certresolver=letsencrypt"
       - "traefik.http.services.osint-suite.loadbalancer.server.port=3000"
 
