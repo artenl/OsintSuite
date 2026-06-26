@@ -74,6 +74,7 @@ export function LiveMap() {
   const [data, setData] = useState<RadarData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [tracking, setTracking] = useState(true)
   const [showAir, setShowAir] = useState(true)
   const [showSea, setShowSea] = useState(true)
   const [layers, setLayers] = useState<Layers | null>(null)
@@ -146,13 +147,19 @@ export function LiveMap() {
     } catch (err) { if (id === reqRef.current) setError(String(err)) } finally { if (id === reqRef.current) setLoading(false) }
   }, [lat, lon, dist])
 
-  useEffect(() => { load(); const t = setInterval(load, 12000); return () => clearInterval(t) }, [load])
+  useEffect(() => {
+    if (!tracking) return
+    load()
+    const t = setInterval(load, 12000)
+    return () => clearInterval(t)
+  }, [load, tracking])
 
   // draw markers
   useEffect(() => {
     const LL = LRef.current, layer = layerRef.current
     if (!ready || !LL || !layer) return
     layer.clearLayers()
+    if (!tracking) return
     if (showAir) for (const a of data?.aircraft ?? []) {
       LL.marker([a.lat, a.lon], { icon: planeIcon(LL, a.track ?? 0) })
         .bindTooltip(`${a.flight || a.hex}${a.type ? ` · ${a.type}` : ''}<br>${a.alt ?? '?'} ft · ${a.gs ?? '?'} kt`, { direction: 'top' })
@@ -180,7 +187,7 @@ export function LiveMap() {
         .bindTooltip('🛰️ ISS (International Space Station)', { direction: 'top' })
         .addTo(layer)
     }
-  }, [data, layers, showAir, showSea, showFire, showConf, showIss, ready])
+  }, [data, layers, showAir, showSea, showFire, showConf, showIss, ready, tracking])
 
   // enrich a selected aircraft via adsbdb
   useEffect(() => {
@@ -229,8 +236,8 @@ export function LiveMap() {
     )
   }
 
-  const aircraft = data?.aircraft ?? []
-  const vessels = data?.vessels ?? []
+  const aircraft = tracking ? (data?.aircraft ?? []) : []
+  const vessels = tracking ? (data?.vessels ?? []) : []
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
@@ -240,13 +247,23 @@ export function LiveMap() {
         <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Live Map</span>
         <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{label} · {dist} nm</span>
         <div className="ml-auto flex items-center gap-3 text-xs">
+          <button onClick={() => setTracking((t) => !t)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium"
+            style={{
+              background: tracking ? 'rgba(51,255,153,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${tracking ? 'rgba(51,255,153,0.4)' : 'var(--color-border)'}`,
+              color: tracking ? 'var(--color-cyan)' : 'var(--color-muted)', cursor: 'pointer',
+            }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: tracking ? 'var(--color-cyan)' : 'var(--color-muted)', boxShadow: tracking ? '0 0 5px var(--color-cyan)' : 'none' }} />
+            {tracking ? 'Live' : 'Paused'}
+          </button>
           <span className="flex items-center gap-1" style={{ color: showAir ? 'var(--color-cyan)' : 'var(--color-muted)', cursor: 'pointer' }} onClick={() => setShowAir((s) => !s)}>
             <Plane size={12} /> {aircraft.length}
           </span>
           <span className="flex items-center gap-1" style={{ color: showSea ? 'var(--color-purple)' : 'var(--color-muted)', cursor: 'pointer' }} onClick={() => setShowSea((s) => !s)}>
             <Ship size={12} /> {vessels.length}
           </span>
-          {loading ? <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-muted)' }} /> : <RefreshCw size={12} style={{ color: 'var(--color-muted)', cursor: 'pointer' }} onClick={load} />}
+          {tracking && (loading ? <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-muted)' }} /> : <RefreshCw size={12} style={{ color: 'var(--color-muted)', cursor: 'pointer' }} onClick={load} />)}
         </div>
       </div>
 
