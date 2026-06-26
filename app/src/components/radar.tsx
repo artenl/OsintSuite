@@ -12,10 +12,10 @@ type Vessel = {
   imo?: string | null; callsign?: string | null; draught?: number | null; length?: number | null; width?: number | null
 }
 type RadarData = { aircraft: Aircraft[]; vessels: Vessel[]; aisConfigured: boolean; aisConnected: boolean }
-type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
+type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string; time?: string; brightness?: number; daynight?: string; satellite?: string }
 type ConflictEvt = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string; actor1?: string; actor2?: string; articles?: number; tone?: number }
 type Layers = { iss: { lat: number; lon: number } | null; fires: Fire[]; conflict: ConflictEvt[]; firmsConfigured: boolean; acledConfigured: boolean }
-type Selected = { kind: 'aircraft'; a: Aircraft } | { kind: 'vessel'; v: Vessel } | { kind: 'conflict'; e: ConflictEvt } | null
+type Selected = { kind: 'aircraft'; a: Aircraft } | { kind: 'vessel'; v: Vessel } | { kind: 'conflict'; e: ConflictEvt } | { kind: 'fire'; f: Fire } | null
 type AcInfo = {
   route?: { airline: string | null; airlineCountry: string | null; origin: AP; destination: AP }
   aircraft?: { type: string | null; manufacturer: string | null; registration: string | null; owner: string | null; ownerCountry: string | null }
@@ -181,6 +181,7 @@ export function LiveMap() {
     if (showFire) for (const f of layers?.fires ?? []) {
       LL.marker([f.lat, f.lon], { icon: fireIcon(LL) })
         .bindTooltip(`🔥 Fire/thermal<br>${f.date} · conf ${f.confidence}${f.frp ? ` · ${f.frp} MW` : ''}`, { direction: 'top' })
+        .on('click', () => setSelected({ kind: 'fire', f }))
         .addTo(layer)
     }
     if (showConf) for (const e of layers?.conflict ?? []) {
@@ -367,6 +368,29 @@ export function LiveMap() {
                 </div>
               )}
               <p className="text-xs pt-1" style={{ color: 'var(--color-muted)' }}>Media-derived event (GDELT) — a reported incident, not a verified casualty count.</p>
+            </div>
+          )}
+          {selected.kind === 'fire' && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span style={{ color: '#ff6a00' }}>🔥</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Fire / thermal anomaly</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--color-muted)' }}>{selected.f.lat.toFixed(4)}, {selected.f.lon.toFixed(4)}</span>
+                <button onClick={() => setSelected(null)} className="ml-auto text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>close ✕</button>
+              </div>
+              <Row k="Detected" v={`${selected.f.date}${selected.f.time ? ` ${selected.f.time.padStart(4, '0').replace(/(\d{2})(\d{2})/, '$1:$2')} UTC` : ''}${selected.f.daynight ? ` · ${selected.f.daynight === 'D' ? 'day' : 'night'}` : ''}`} />
+              {selected.f.frp != null && <Row k="Fire power" v={`${selected.f.frp} MW (radiative)`} hl="#ff6a00" />}
+              {selected.f.brightness != null && <Row k="Brightness" v={`${Math.round(selected.f.brightness)} K`} />}
+              <Row k="Confidence" v={selected.f.confidence === 'h' ? 'High' : selected.f.confidence === 'n' ? 'Nominal' : selected.f.confidence === 'l' ? 'Low' : selected.f.confidence || '—'} />
+              {selected.f.satellite && <Row k="Satellite" v={`${selected.f.satellite} (VIIRS)`} />}
+              <div className="flex gap-3 text-xs pt-0.5">
+                <span className="font-mono w-24 flex-shrink-0" style={{ color: 'var(--color-muted)' }}>Map</span>
+                <span className="flex-1 flex gap-3">
+                  <a href={`https://www.openstreetmap.org/?mlat=${selected.f.lat}&mlon=${selected.f.lon}#map=12/${selected.f.lat}/${selected.f.lon}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-cyan)' }}>OSM</a>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${selected.f.lat},${selected.f.lon}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-cyan)' }}>Google</a>
+                </span>
+              </div>
+              <p className="text-xs pt-1" style={{ color: 'var(--color-muted)' }}>NASA FIRMS VIIRS detection (last 24h) — could be wildfire, agricultural burn, industrial flare, or volcanic.</p>
             </div>
           )}
         </div>

@@ -15,7 +15,7 @@ const schema = z.object({
   iss: z.boolean().optional(),
 })
 
-type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
+type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string; time?: string; brightness?: number; daynight?: string; satellite?: string }
 type Conflict = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string; actor1?: string; actor2?: string; articles?: number; tone?: number }
 
 // ISS position — CelesTrak TLE (free, no key) propagated with SGP4. TLE cached.
@@ -56,12 +56,17 @@ async function fires(key: string, bbox: string): Promise<Fire[]> {
     if (lines.length < 2) return []
     const head = lines[0].split(',')
     const iLat = head.indexOf('latitude'), iLon = head.indexOf('longitude'), iConf = head.indexOf('confidence'), iFrp = head.indexOf('frp'), iDate = head.indexOf('acq_date')
+    const iTime = head.indexOf('acq_time'), iBright = head.indexOf('bright_ti4'), iDay = head.indexOf('daynight'), iSat = head.indexOf('satellite')
     const out: Fire[] = []
     for (const l of lines.slice(1, 1500)) {
       const c = l.split(',')
       const lat = Number(c[iLat]), lon = Number(c[iLon])
       if (!isFinite(lat) || !isFinite(lon)) continue
-      out.push({ lat, lon, confidence: c[iConf] ?? '', frp: iFrp >= 0 ? Number(c[iFrp]) : null, date: c[iDate] ?? '' })
+      out.push({
+        lat, lon, confidence: c[iConf] ?? '', frp: iFrp >= 0 ? Number(c[iFrp]) : null, date: c[iDate] ?? '',
+        time: iTime >= 0 ? c[iTime] : undefined, brightness: iBright >= 0 ? Number(c[iBright]) : undefined,
+        daynight: iDay >= 0 ? c[iDay] : undefined, satellite: iSat >= 0 ? c[iSat] : undefined,
+      })
     }
     return out
   } catch { return [] }
