@@ -27,11 +27,14 @@ interface EmailResults {
   hibp?: { breached: boolean; count?: number; breaches?: string[] } | { error: string }
 }
 
+type SanctionMatch = { name: string; type: string; programs: string[]; matchedAs: string; score: number }
+type SanctionsData = { query: string; Result: string; count: number; listSize: number; matches: SanctionMatch[] }
+
 // Which backend tools run automatically per mode.
 const MODE_TOOLS: Record<Mode, string[]> = {
   username: ['username', 'github'],
   email: ['email', 'gravatar'],
-  name: [],
+  name: ['sanctions'],
   phone: ['phone'],
 }
 
@@ -202,6 +205,7 @@ export default function PersonPage() {
   const githubResult = results.github?.status === 'done' ? (results.github.data as Record<string, string>) : null
   const gravatarResult = results.gravatar?.status === 'done' ? (results.gravatar.data as Record<string, string>) : null
   const phoneResult = results.phone?.status === 'done' ? (results.phone.data as Record<string, string>) : null
+  const sanctionsResult = results.sanctions?.status === 'done' ? (results.sanctions.data as SanctionsData) : null
 
   const doneTools = Object.values(results).filter((r) => r.status === 'done').length
   const hasToolResults = doneTools > 0
@@ -394,6 +398,9 @@ export default function PersonPage() {
         </div>
       )}
 
+      {/* OFAC sanctions screen (name mode) */}
+      {sanctionsResult && <SanctionsCard d={sanctionsResult} />}
+
       {/* Name mode info box */}
       {mode === 'name' && !loading && dorks.length === 0 && (
         <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
@@ -524,6 +531,42 @@ function ProfileCard({ title, data, accent }: { title: string; data: Record<stri
           })}
         </div>
       </div>
+    </div>
+  )
+}
+
+function SanctionsCard({ d }: { d: SanctionsData }) {
+  const hit = d.count > 0
+  return (
+    <div className="rounded-xl p-4" style={{ background: 'var(--color-surface)', border: `1px solid ${hit ? 'rgba(255,85,85,0.35)' : 'var(--color-border)'}` }}>
+      <div className="flex items-center gap-2 mb-2">
+        <h2 className="text-sm font-semibold" style={{ color: hit ? 'var(--color-red)' : 'var(--color-green)' }}>OFAC Sanctions Screen</h2>
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>· {d.listSize.toLocaleString()} entries</span>
+      </div>
+      <p className="text-sm mb-2" style={{ color: hit ? 'var(--color-red)' : 'var(--color-green)' }}>{d.Result}</p>
+      {hit && (
+        <div className="space-y-1.5">
+          {d.matches.map((m, i) => (
+            <div key={i} className="flex items-start gap-3 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,85,85,0.06)', border: '1px solid rgba(255,85,85,0.2)' }}>
+              <span className="text-xs font-mono mt-0.5 px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'rgba(255,85,85,0.15)', color: 'var(--color-red)' }}>{Math.round(m.score * 100)}%</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{m.name}</p>
+                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                  {m.type}{m.matchedAs !== m.name ? ` · matched alias "${m.matchedAs}"` : ''}
+                </p>
+                {m.programs.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {m.programs.map((p) => (
+                      <span key={p} className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--color-amber)' }}>{p}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>Fuzzy name matches against the US Treasury SDN list — verify identity before acting (same name ≠ same person).</p>
+        </div>
+      )}
     </div>
   )
 }
