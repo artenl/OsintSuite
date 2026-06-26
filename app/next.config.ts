@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['better-sqlite3', 'bcryptjs', 'libphonenumber-geo-carrier'],
+  serverExternalPackages: ['better-sqlite3', 'bcryptjs', 'libphonenumber-geo-carrier', 'ws'],
   // geo-carrier loads BSON metadata from its resources/ dir at runtime; make sure
   // the standalone output includes those files for the phone route.
   outputFileTracingIncludes: {

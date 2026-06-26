@@ -39,6 +39,7 @@ const API_SERVICES = [
   { id: 'hibp', label: 'HaveIBeenPwned', description: 'Email breach lookup' },
   { id: 'urlscan', label: 'URLScan.io', description: 'URL & domain analysis (optional — search works without a key)' },
   { id: 'abusech', label: 'abuse.ch', description: 'Threat intel / URLhaus (free Auth-Key at auth.abuse.ch)' },
+  { id: 'aisstream', label: 'aisstream.io', description: 'Live ship/AIS data for the dashboard radar (free key at aisstream.io)' },
 ]
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -48,6 +49,7 @@ const SERVICE_LABELS: Record<string, string> = {
   hibp: 'HaveIBeenPwned',
   gemini: 'Google Gemini',
   abusech: 'abuse.ch',
+  aisstream: 'aisstream.io',
 }
 
 export default function SettingsPage() {

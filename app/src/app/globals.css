@@ -130,3 +130,11 @@ body::after {
 .hover-row:hover {
   background: rgba(51, 255, 153, 0.04);
 }
+
+/* Radar blip pulse */
+@keyframes radar-ping {
+  0% { opacity: 0.9; }
+  50% { opacity: 0.35; }
+  100% { opacity: 0.9; }
+}
+.radar-blip { animation: radar-ping 2s ease-in-out infinite; }

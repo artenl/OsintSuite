@@ -7,6 +7,7 @@ import { eq, desc, count } from 'drizzle-orm'
 import { Globe, User, FolderSearch, Activity, ArrowRight, type LucideProps } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
+import { Radar } from '@/components/radar'
 
 type IconComponent = React.ComponentType<LucideProps>
 
@@ -83,6 +84,9 @@ export default async function DashboardPage() {
           sub="recent"
         />
       </div>
+
+      {/* Live radar */}
+      <Radar />
 
       {/* Quick actions */}
       <div>
