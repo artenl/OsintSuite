@@ -27,7 +27,10 @@ interface EmailResults {
   hibp?: { breached: boolean; count?: number; breaches?: string[] } | { error: string }
 }
 
-type SanctionMatch = { name: string; type: string; programs: string[]; matchedAs: string; score: number }
+type SanctionMatch = {
+  name: string; type: string; programs: string[]; matchedAs: string; score: number
+  title?: string; remarks?: string; aliases?: string[]; addresses?: string[]
+}
 type SanctionsData = { query: string; Result: string; count: number; listSize: number; matches: SanctionMatch[] }
 
 // Which backend tools run automatically per mode.
@@ -539,6 +542,58 @@ function ProfileCard({ title, data, accent }: { title: string; data: Record<stri
   )
 }
 
+function SanctionMatchRow({ m }: { m: SanctionMatch }) {
+  const [open, setOpen] = useState(false)
+  const hasDetail = !!(m.title || m.remarks || m.aliases?.length || m.addresses?.length)
+  // pull out structured fields from OFAC remarks (DOB; Nationality; Passport; etc.)
+  const remarkParts = m.remarks ? m.remarks.split(';').map((s) => s.trim()).filter(Boolean) : []
+  return (
+    <div className="rounded-lg" style={{ background: 'rgba(255,85,85,0.06)', border: '1px solid rgba(255,85,85,0.2)' }}>
+      <button onClick={() => hasDetail && setOpen((o) => !o)} className="w-full flex items-start gap-3 px-3 py-2 text-left" style={{ cursor: hasDetail ? 'pointer' : 'default' }}>
+        <span className="text-xs font-mono mt-0.5 px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'rgba(255,85,85,0.15)', color: 'var(--color-red)' }}>{Math.round(m.score * 100)}%</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{m.name}</p>
+          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+            {m.type}{m.title ? ` · ${m.title}` : ''}{m.matchedAs !== m.name ? ` · matched alias "${m.matchedAs}"` : ''}
+          </p>
+          {m.programs.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {m.programs.map((p) => <span key={p} className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--color-amber)' }}>{p}</span>)}
+            </div>
+          )}
+        </div>
+        {hasDetail && <span className="text-xs flex-shrink-0" style={{ color: 'var(--color-muted)' }}>{open ? '▲' : '▼'}</span>}
+      </button>
+      {open && (
+        <div className="px-3 pb-2 pt-1 space-y-2" style={{ borderTop: '1px solid rgba(255,85,85,0.15)' }}>
+          {remarkParts.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--color-muted)' }}>Details</p>
+              <div className="space-y-0.5">
+                {remarkParts.slice(0, 30).map((r, i) => <p key={i} className="text-xs font-mono break-words" style={{ color: 'var(--color-text)' }}>{r}</p>)}
+              </div>
+            </div>
+          )}
+          {m.aliases && m.aliases.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--color-muted)' }}>Aliases ({m.aliases.length})</p>
+              <p className="text-xs font-mono break-words" style={{ color: 'var(--color-text)' }}>{m.aliases.join(' · ')}</p>
+            </div>
+          )}
+          {m.addresses && m.addresses.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--color-muted)' }}>Addresses</p>
+              <div className="space-y-0.5">
+                {m.addresses.map((a, i) => <p key={i} className="text-xs font-mono break-words" style={{ color: 'var(--color-text)' }}>{a}</p>)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SanctionsCard({ d }: { d: SanctionsData }) {
   const hit = d.count > 0
   return (
@@ -550,24 +605,7 @@ function SanctionsCard({ d }: { d: SanctionsData }) {
       <p className="text-sm mb-2" style={{ color: hit ? 'var(--color-red)' : 'var(--color-green)' }}>{d.Result}</p>
       {hit && (
         <div className="space-y-1.5">
-          {d.matches.map((m, i) => (
-            <div key={i} className="flex items-start gap-3 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,85,85,0.06)', border: '1px solid rgba(255,85,85,0.2)' }}>
-              <span className="text-xs font-mono mt-0.5 px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'rgba(255,85,85,0.15)', color: 'var(--color-red)' }}>{Math.round(m.score * 100)}%</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{m.name}</p>
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  {m.type}{m.matchedAs !== m.name ? ` · matched alias "${m.matchedAs}"` : ''}
-                </p>
-                {m.programs.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {m.programs.map((p) => (
-                      <span key={p} className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--color-amber)' }}>{p}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+          {d.matches.map((m, i) => <SanctionMatchRow key={i} m={m} />)}
           <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>Fuzzy name matches against the US Treasury SDN list — verify identity before acting (same name ≠ same person).</p>
         </div>
       )}

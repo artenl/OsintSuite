@@ -4,16 +4,20 @@
 
 const SDN_URL = 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.CSV'
 const ALT_URL = 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ALT.CSV'
+const ADD_URL = 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ADD.CSV'
 const TTL_MS = 24 * 60 * 60 * 1000
 
-type Entity = { entNum: string; name: string; type: string; programs: string[] }
+type Entity = { entNum: string; name: string; type: string; programs: string[]; title: string; remarks: string; aliases: string[]; addresses: string[] }
 type IndexEntry = { entNum: string; nameVariant: string; tokens: Set<string> }
 
 type State = { entities: Map<string, Entity>; index: IndexEntry[]; loadedAt: number; loading: Promise<void> | null }
 const g = globalThis as unknown as { __ofac?: State }
 const state: State = g.__ofac ?? (g.__ofac = { entities: new Map(), index: [], loadedAt: 0, loading: null })
 
-export type SanctionMatch = { name: string; type: string; programs: string[]; matchedAs: string; score: number }
+export type SanctionMatch = {
+  name: string; type: string; programs: string[]; matchedAs: string; score: number
+  title?: string; remarks?: string; aliases?: string[]; addresses?: string[]
+}
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -46,7 +50,7 @@ async function fetchCsv(url: string): Promise<string> {
 }
 
 async function load(): Promise<void> {
-  const [sdn, alt] = await Promise.all([fetchCsv(SDN_URL), fetchCsv(ALT_URL)])
+  const [sdn, alt, add] = await Promise.all([fetchCsv(SDN_URL), fetchCsv(ALT_URL), fetchCsv(ADD_URL).catch(() => '')])
 
   const entities = new Map<string, Entity>()
   const index: IndexEntry[] = []
@@ -58,7 +62,7 @@ async function load(): Promise<void> {
     const name = clean(f[1])
     if (!name) continue
     const programs = clean(f[3]).split('] [').map((p) => p.replace(/[[\]]/g, '').trim()).filter(Boolean)
-    const ent: Entity = { entNum, name, type: clean(f[2]) || 'Entity', programs }
+    const ent: Entity = { entNum, name, type: clean(f[2]) || 'Entity', programs, title: clean(f[4]), remarks: clean(f[11]), aliases: [], addresses: [] }
     entities.set(entNum, ent)
     index.push({ entNum, nameVariant: name, tokens: new Set(tokenize(name)) })
   }
@@ -66,9 +70,19 @@ async function load(): Promise<void> {
   for (const line of alt.split('\n')) {
     const f = parseCsvLine(line)
     const entNum = (f[0] ?? '').trim()
-    if (!/^\d+$/.test(entNum) || !entities.has(entNum)) continue
+    const ent = entities.get(entNum)
+    if (!/^\d+$/.test(entNum) || !ent) continue
     const altName = clean(f[3])
-    if (altName) index.push({ entNum, nameVariant: altName, tokens: new Set(tokenize(altName)) })
+    if (altName) { index.push({ entNum, nameVariant: altName, tokens: new Set(tokenize(altName)) }); ent.aliases.push(altName) }
+  }
+
+  for (const line of add.split('\n')) {
+    const f = parseCsvLine(line)
+    const entNum = (f[0] ?? '').trim()
+    const ent = entities.get(entNum)
+    if (!/^\d+$/.test(entNum) || !ent) continue
+    const addr = [clean(f[2]), clean(f[3]), clean(f[4])].filter(Boolean).join(', ')
+    if (addr) ent.addresses.push(addr)
   }
 
   state.entities = entities
@@ -101,14 +115,21 @@ export async function screen(query: string): Promise<{ count: number; total: num
     }
   }
 
-  const ranked = [...best.entries()]
-    .map(([entNum, m]) => {
-      const ent = state.entities.get(entNum)!
-      return { name: ent.name, type: ent.type, programs: ent.programs, matchedAs: m.matchedAs, score: Math.round(m.score * 100) / 100, precision: m.precision }
-    })
+  const matches: SanctionMatch[] = [...best.entries()]
+    .map(([entNum, m]) => ({ ent: state.entities.get(entNum)!, score: m.score, precision: m.precision, matchedAs: m.matchedAs }))
     .sort((a, b) => b.score - a.score || b.precision - a.precision)
     .slice(0, 25)
+    .map(({ ent, score, matchedAs }) => ({
+      name: ent.name,
+      type: ent.type,
+      programs: ent.programs,
+      matchedAs,
+      score: Math.round(score * 100) / 100,
+      title: ent.title || undefined,
+      remarks: ent.remarks || undefined,
+      aliases: ent.aliases.length ? ent.aliases.slice(0, 20) : undefined,
+      addresses: ent.addresses.length ? ent.addresses.slice(0, 10) : undefined,
+    }))
 
-  const matches: SanctionMatch[] = ranked.map((m) => ({ name: m.name, type: m.type, programs: m.programs, matchedAs: m.matchedAs, score: m.score }))
   return { count: best.size, total: state.entities.size, matches }
 }
