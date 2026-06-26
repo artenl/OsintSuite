@@ -131,10 +131,8 @@ body::after {
   background: rgba(51, 255, 153, 0.04);
 }
 
-/* Radar blip pulse */
-@keyframes radar-ping {
-  0% { opacity: 0.9; }
-  50% { opacity: 0.35; }
-  100% { opacity: 0.9; }
-}
-.radar-blip { animation: radar-ping 2s ease-in-out infinite; }
+/* Leaflet dark tweaks */
+.leaflet-container { background: #0a120c; font-family: var(--font-mono); }
+.leaflet-control-zoom a { background: var(--color-surface-2) !important; color: var(--color-cyan) !important; border-color: var(--color-border) !important; }
+.leaflet-tooltip { background: var(--color-surface) !important; color: var(--color-text) !important; border: 1px solid var(--color-border) !important; font-family: var(--font-mono); font-size: 11px; }
+.leaflet-tooltip::before { border-top-color: var(--color-border) !important; }

@@ -88,11 +88,12 @@ Geospatial intelligence:
 - **Runner** — executes against the Overpass API, lists features with map links and
   an "open in overpass-turbo" button, plus an **AI summary** (observations + leads).
 
-### 🛰️ Dashboard — Live Radar
-A real-time radar scope on the dashboard:
-- **Aircraft (ADS-B)** — live planes around a chosen point (callsign, type, altitude,
-  speed, heading), plotted as blips with a rotating sweep. Free, no key (adsb.lol).
-- **Ships (AIS)** — live vessels on the same scope, via a persistent stream
+### 🛰️ Dashboard — Live Map
+A real-time dark map on the dashboard (Leaflet):
+- **Aircraft (ADS-B)** — live planes around a chosen point at their real positions
+  (heading-oriented icons; callsign, type, altitude, speed on hover). Free, no key
+  (adsb.lol).
+- **Ships (AIS)** — live vessels on the same map, via a persistent stream
   (requires a free [aisstream.io](https://aisstream.io) key).
 - City presets, "use my location", and a selectable range; auto-refreshes.
 
