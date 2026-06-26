@@ -6,8 +6,18 @@ import type * as L from 'leaflet'
 import { Map as MapIcon, Plane, Ship, Crosshair, Loader2, RefreshCw } from 'lucide-react'
 
 type Aircraft = { hex: string; flight: string | null; type: string | null; lat: number; lon: number; alt: number | null; gs: number | null; track: number | null }
-type Vessel = { mmsi: string; name: string | null; lat: number; lon: number; sog: number | null; cog: number | null }
+type Vessel = {
+  mmsi: string; name: string | null; lat: number; lon: number; sog: number | null; cog: number | null
+  heading?: number | null; flag?: string | null; typeLabel?: string | null; destination?: string | null
+  imo?: string | null; callsign?: string | null; draught?: number | null; length?: number | null; width?: number | null
+}
 type RadarData = { aircraft: Aircraft[]; vessels: Vessel[]; aisConfigured: boolean; aisConnected: boolean }
+type Selected = { kind: 'aircraft'; a: Aircraft } | { kind: 'vessel'; v: Vessel } | null
+type AcInfo = {
+  route?: { airline: string | null; airlineCountry: string | null; origin: AP; destination: AP }
+  aircraft?: { type: string | null; manufacturer: string | null; registration: string | null; owner: string | null; ownerCountry: string | null }
+}
+type AP = { name?: string; iata?: string; icao?: string; city?: string; country?: string } | null
 
 const PRESETS = [
   { label: 'London', lat: 51.5074, lon: -0.1278 },
@@ -48,6 +58,9 @@ export function LiveMap() {
   const [showAir, setShowAir] = useState(true)
   const [showSea, setShowSea] = useState(true)
   const [ready, setReady] = useState(false)
+  const [selected, setSelected] = useState<Selected>(null)
+  const [acInfo, setAcInfo] = useState<AcInfo | null>(null)
+  const [acInfoLoading, setAcInfoLoading] = useState(false)
 
   const reqRef = useRef(0)
   const elRef = useRef<HTMLDivElement>(null)
@@ -101,14 +114,36 @@ export function LiveMap() {
     if (showAir) for (const a of data?.aircraft ?? []) {
       LL.marker([a.lat, a.lon], { icon: planeIcon(LL, a.track ?? 0) })
         .bindTooltip(`${a.flight || a.hex}${a.type ? ` · ${a.type}` : ''}<br>${a.alt ?? '?'} ft · ${a.gs ?? '?'} kt`, { direction: 'top' })
+        .on('click', () => setSelected({ kind: 'aircraft', a }))
         .addTo(layer)
     }
     if (showSea) for (const v of data?.vessels ?? []) {
       LL.marker([v.lat, v.lon], { icon: shipIcon(LL) })
         .bindTooltip(`${v.name || v.mmsi}<br>${v.sog ?? '?'} kt`, { direction: 'top' })
+        .on('click', () => setSelected({ kind: 'vessel', v }))
         .addTo(layer)
     }
   }, [data, showAir, showSea, ready])
+
+  // enrich a selected aircraft via adsbdb
+  useEffect(() => {
+    if (selected?.kind !== 'aircraft') { setAcInfo(null); return }
+    const { a } = selected
+    setAcInfo(null); setAcInfoLoading(true)
+    let cancelled = false
+    fetch('/api/radar/aircraft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hex: a.hex, callsign: a.flight }) })
+      .then((r) => r.json()).then((d) => { if (!cancelled) setAcInfo(d) })
+      .catch(() => { if (!cancelled) setAcInfo({}) })
+      .finally(() => { if (!cancelled) setAcInfoLoading(false) })
+    return () => { cancelled = true }
+  }, [selected])
+
+  function airport(a: AP): string {
+    if (!a) return '—'
+    const code = a.iata || a.icao
+    const place = [a.city, a.country].filter(Boolean).join(', ')
+    return `${code ? `${code} · ` : ''}${a.name || ''}${place ? ` — ${place}` : ''}`.trim()
+  }
 
   function useMyLocation() {
     if (!navigator.geolocation) return
@@ -160,6 +195,48 @@ export function LiveMap() {
       {/* map */}
       <div ref={elRef} style={{ height: 420, width: '100%', background: '#0a120c' }} />
 
+      {/* detail panel */}
+      {selected && (
+        <div className="px-4 py-3" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface-2)' }}>
+          {selected.kind === 'aircraft' ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Plane size={14} style={{ color: 'var(--color-cyan)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{selected.a.flight || selected.a.hex}</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--color-muted)' }}>{selected.a.hex}{selected.a.type ? ` · ${selected.a.type}` : ''}</span>
+                {acInfoLoading && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-muted)' }} />}
+                <button onClick={() => setSelected(null)} className="ml-auto text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>close ✕</button>
+              </div>
+              <Row k="Live" v={`${selected.a.alt ?? '?'} ft · ${selected.a.gs ?? '?'} kt · hdg ${selected.a.track ?? '?'}°`} />
+              {acInfo?.route?.airline && <Row k="Airline" v={`${acInfo.route.airline}${acInfo.route.airlineCountry ? ` (${acInfo.route.airlineCountry})` : ''}`} />}
+              {acInfo?.route?.origin && <Row k="From" v={airport(acInfo.route.origin)} hl="var(--color-cyan)" />}
+              {acInfo?.route?.destination && <Row k="To" v={airport(acInfo.route.destination)} hl="var(--color-cyan)" />}
+              {acInfo?.aircraft?.type && <Row k="Aircraft" v={`${acInfo.aircraft.type}${acInfo.aircraft.manufacturer ? ` · ${acInfo.aircraft.manufacturer}` : ''}`} />}
+              {acInfo?.aircraft?.registration && <Row k="Reg" v={acInfo.aircraft.registration} />}
+              {acInfo?.aircraft?.owner && <Row k="Owner" v={`${acInfo.aircraft.owner}${acInfo.aircraft.ownerCountry ? ` (${acInfo.aircraft.ownerCountry})` : ''}`} />}
+              {!acInfoLoading && acInfo && !acInfo.route && !acInfo.aircraft && <p className="text-xs" style={{ color: 'var(--color-muted)' }}>No route/registry record found for this aircraft.</p>}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Ship size={14} style={{ color: 'var(--color-purple)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{selected.v.name || selected.v.mmsi}</span>
+                {selected.v.flag && <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{selected.v.flag}</span>}
+                <button onClick={() => setSelected(null)} className="ml-auto text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>close ✕</button>
+              </div>
+              <Row k="MMSI" v={selected.v.mmsi} />
+              {selected.v.typeLabel && <Row k="Type" v={selected.v.typeLabel} />}
+              {selected.v.destination && <Row k="Destination" v={selected.v.destination} hl="var(--color-purple)" />}
+              <Row k="Speed / course" v={`${selected.v.sog ?? '?'} kt · ${selected.v.cog ?? selected.v.heading ?? '?'}°`} />
+              {(selected.v.length || selected.v.width) && <Row k="Size" v={`${selected.v.length ?? '?'} × ${selected.v.width ?? '?'} m${selected.v.draught ? ` · draught ${selected.v.draught} m` : ''}`} />}
+              {selected.v.imo && <Row k="IMO" v={selected.v.imo} />}
+              {selected.v.callsign && <Row k="Callsign" v={selected.v.callsign} />}
+              {!selected.v.typeLabel && !selected.v.destination && <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Static data (type/destination) not received yet — broadcast every few minutes.</p>}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* legend / status */}
       <div className="flex items-center gap-4 px-4 py-2 text-xs flex-wrap" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-muted)' }}>
         <span className="flex items-center gap-1.5"><span style={{ color: 'var(--color-cyan)' }}>▲</span> aircraft</span>
@@ -168,6 +245,15 @@ export function LiveMap() {
           ? <span>Add a free <a href="https://aisstream.io" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-purple)' }}>aisstream.io</a> key in Settings to see ships</span>
           : vessels.length === 0 && <span style={{ color: 'var(--color-muted)' }}>{data?.aisConnected ? 'AIS connected — ships fill in over ~30s (coastal areas)' : 'connecting to AIS…'}</span>}
       </div>
+    </div>
+  )
+}
+
+function Row({ k, v, hl }: { k: string; v: string; hl?: string }) {
+  return (
+    <div className="flex gap-3 text-xs">
+      <span className="font-mono w-24 flex-shrink-0" style={{ color: 'var(--color-muted)' }}>{k}</span>
+      <span className="font-mono flex-1 break-words" style={{ color: hl || 'var(--color-text)' }}>{v}</span>
     </div>
   )
 }
