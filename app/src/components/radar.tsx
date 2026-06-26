@@ -27,7 +27,15 @@ const PRESETS = [
   { label: 'Paris', lat: 48.8566, lon: 2.3522 },
 ]
 
-const ZOOM_FOR: Record<number, number> = { 50: 9, 100: 8, 150: 7, 250: 6 }
+const DEFAULT_ZOOM = 8
+
+function havNm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3440.065
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
 
 function planeIcon(LL: typeof L, track: number, found = false) {
   return LL.divIcon({
@@ -48,10 +56,9 @@ function shipIcon(LL: typeof L) {
 }
 
 export function LiveMap() {
-  const [lat, setLat] = useState(51.5074)
-  const [lon, setLon] = useState(-0.1278)
+  const [view, setView] = useState({ lat: 51.5074, lon: -0.1278, dist: 100 })
   const [label, setLabel] = useState('London')
-  const [dist, setDist] = useState(100)
+  const { lat, lon, dist } = view
   const [data, setData] = useState<RadarData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -75,22 +82,26 @@ export function LiveMap() {
       const LL = (await import('leaflet')) as unknown as typeof L
       if (killed || !elRef.current || mapRef.current) return
       LRef.current = LL
-      const map = LL.map(elRef.current, { center: [lat, lon], zoom: ZOOM_FOR[dist] ?? 8, zoomControl: true, attributionControl: false })
+      const map = LL.map(elRef.current, { center: [lat, lon], zoom: DEFAULT_ZOOM, zoomControl: true, attributionControl: false })
       LL.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         subdomains: 'abcd', maxZoom: 19,
       }).addTo(map)
       layerRef.current = LL.layerGroup().addTo(map)
       mapRef.current = map
+      // When the map settles on a new area, fetch for that area + a range derived
+      // from the visible bounds (capped to the ADS-B API max of 250 nm).
+      map.on('moveend', () => {
+        const c = map.getCenter()
+        const ne = map.getBounds().getNorthEast()
+        const d = Math.min(250, Math.max(10, Math.round(havNm(c.lat, c.lng, ne.lat, ne.lng))))
+        setView({ lat: +c.lat.toFixed(4), lon: +c.lng.toFixed(4), dist: d })
+        setLabel(`${c.lat.toFixed(2)}, ${c.lng.toFixed(2)}`)
+      })
       setReady(true)
     })()
     return () => { killed = true; mapRef.current?.remove(); mapRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // recenter when target changes
-  useEffect(() => {
-    if (ready && mapRef.current) mapRef.current.setView([lat, lon], ZOOM_FOR[dist] ?? 8)
-  }, [lat, lon, dist, ready])
 
   const load = useCallback(async () => {
     const id = ++reqRef.current
@@ -145,10 +156,16 @@ export function LiveMap() {
     return `${code ? `${code} · ` : ''}${a.name || ''}${place ? ` — ${place}` : ''}`.trim()
   }
 
+  // Move the map; the moveend handler updates the fetch area + range.
+  function goTo(la: number, lo: number) {
+    if (mapRef.current) mapRef.current.setView([la, lo], DEFAULT_ZOOM)
+    else setView({ lat: la, lon: lo, dist: 100 })
+  }
+
   function useMyLocation() {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (p) => { setLat(+p.coords.latitude.toFixed(4)); setLon(+p.coords.longitude.toFixed(4)); setLabel('my location') },
+      (p) => goTo(+p.coords.latitude.toFixed(4), +p.coords.longitude.toFixed(4)),
       () => setError('Location permission denied')
     )
   }
@@ -176,19 +193,17 @@ export function LiveMap() {
 
       {/* controls */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>Jump to:</span>
         {PRESETS.map((p) => (
-          <button key={p.label} onClick={() => { setLat(p.lat); setLon(p.lon); setLabel(p.label) }}
-            className="px-2 py-1 rounded-md text-xs" style={{ background: label === p.label ? 'rgba(51,255,153,0.12)' : 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: label === p.label ? 'var(--color-cyan)' : 'var(--color-muted)', cursor: 'pointer' }}>
+          <button key={p.label} onClick={() => goTo(p.lat, p.lon)}
+            className="px-2 py-1 rounded-md text-xs" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', cursor: 'pointer' }}>
             {p.label}
           </button>
         ))}
         <button onClick={useMyLocation} className="flex items-center gap-1 px-2 py-1 rounded-md text-xs" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', cursor: 'pointer' }}>
           <Crosshair size={11} /> My location
         </button>
-        <select value={dist} onChange={(e) => setDist(Number(e.target.value))}
-          className="px-2 py-1 rounded-md text-xs outline-none" style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
-          {[50, 100, 150, 250].map((d) => <option key={d} value={d}>{d} nm</option>)}
-        </select>
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>· pan/zoom the map to track any area</span>
         {error && <span className="text-xs" style={{ color: 'var(--color-red)' }}>{error}</span>}
       </div>
 
