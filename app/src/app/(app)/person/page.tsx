@@ -34,7 +34,7 @@ type SanctionsData = { query: string; Result: string; count: number; listSize: n
 const MODE_TOOLS: Record<Mode, string[]> = {
   username: ['username', 'github'],
   email: ['email', 'gravatar'],
-  name: ['sanctions'],
+  name: ['sanctions', 'gdelt'],
   phone: ['phone'],
 }
 
@@ -206,6 +206,7 @@ export default function PersonPage() {
   const gravatarResult = results.gravatar?.status === 'done' ? (results.gravatar.data as Record<string, string>) : null
   const phoneResult = results.phone?.status === 'done' ? (results.phone.data as Record<string, string>) : null
   const sanctionsResult = results.sanctions?.status === 'done' ? (results.sanctions.data as SanctionsData) : null
+  const gdeltResult = results.gdelt?.status === 'done' ? (results.gdelt.data as Record<string, string>) : null
 
   const doneTools = Object.values(results).filter((r) => r.status === 'done').length
   const hasToolResults = doneTools > 0
@@ -400,6 +401,9 @@ export default function PersonPage() {
 
       {/* OFAC sanctions screen (name mode) */}
       {sanctionsResult && <SanctionsCard d={sanctionsResult} />}
+
+      {/* Recent news (GDELT) */}
+      {gdeltResult && <ProfileCard title="Recent News (GDELT)" data={gdeltResult} accent="var(--color-cyan)" />}
 
       {/* Name mode info box */}
       {mode === 'name' && !loading && dorks.length === 0 && (

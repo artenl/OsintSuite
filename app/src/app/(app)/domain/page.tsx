@@ -25,6 +25,7 @@ const TOOLS = [
   { id: 'virustotal', label: 'VirusTotal' },
   { id: 'urlscan', label: 'URLScan.io' },
   { id: 'threat', label: 'Threat Intel (abuse.ch)' },
+  { id: 'gdelt', label: 'Recent News (GDELT)' },
 ]
 
 export default function DomainPage() {
