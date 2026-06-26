@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { apiKeys } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { conflictNear } from '@/lib/gdelt-conflict'
 
 const schema = z.object({
   lat: z.number().min(-90).max(90),
@@ -15,7 +16,7 @@ const schema = z.object({
 })
 
 type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
-type Conflict = { lat: number; lon: number; type: string; date: string; fatalities: number; notes: string }
+type Conflict = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string }
 
 // ISS position — CelesTrak TLE (free, no key) propagated with SGP4. TLE cached.
 const tleCache = globalThis as unknown as { __issTle?: { l1: string; l2: string; ts: number } }
@@ -98,11 +99,19 @@ export async function POST(req: NextRequest) {
   const firmsKey = await db.query.apiKeys.findFirst({ where: eq(apiKeys.service, 'firms') })
   const acledKey = await db.query.apiKeys.findFirst({ where: eq(apiKeys.service, 'acled') })
 
-  // ACLED key is stored as "email|key"
+  // Conflict: ACLED if a key is configured (verified), else GDELT events (free, no key)
   let conflictEvents: Conflict[] = []
-  if (wantConflict && acledKey?.keyValue?.includes('|')) {
-    const [email, k] = acledKey.keyValue.split('|')
-    conflictEvents = await conflict(k, email, lat, lon)
+  let conflictSource: 'acled' | 'gdelt' | 'none' = 'none'
+  if (wantConflict) {
+    if (acledKey?.keyValue?.includes('|')) {
+      const [email, k] = acledKey.keyValue.split('|')
+      conflictEvents = await conflict(k, email, lat, lon)
+      conflictSource = 'acled'
+    } else {
+      const ev = await conflictNear(lat, lon, dist)
+      conflictEvents = ev.map((e) => ({ lat: e.lat, lon: e.lon, type: e.type, date: e.date, mentions: e.mentions, place: e.place, url: e.url }))
+      conflictSource = 'gdelt'
+    }
   }
 
   const [issPos, fireList] = await Promise.all([
@@ -114,6 +123,7 @@ export async function POST(req: NextRequest) {
     iss: issPos,
     fires: fireList,
     conflict: conflictEvents,
+    conflictSource,
     firmsConfigured: !!firmsKey?.keyValue,
     acledConfigured: !!acledKey?.keyValue,
   })

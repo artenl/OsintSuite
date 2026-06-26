@@ -13,7 +13,7 @@ type Vessel = {
 }
 type RadarData = { aircraft: Aircraft[]; vessels: Vessel[]; aisConfigured: boolean; aisConnected: boolean }
 type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
-type ConflictEvt = { lat: number; lon: number; type: string; date: string; fatalities: number; notes: string }
+type ConflictEvt = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string }
 type Layers = { iss: { lat: number; lon: number } | null; fires: Fire[]; conflict: ConflictEvt[]; firmsConfigured: boolean; acledConfigured: boolean }
 type Selected = { kind: 'aircraft'; a: Aircraft } | { kind: 'vessel'; v: Vessel } | null
 type AcInfo = {
@@ -185,7 +185,7 @@ export function LiveMap() {
     }
     if (showConf) for (const e of layers?.conflict ?? []) {
       LL.marker([e.lat, e.lon], { icon: conflictIcon(LL) })
-        .bindTooltip(`⚠ ${e.type}<br>${e.date}${e.fatalities ? ` · ${e.fatalities} killed` : ''}${e.notes ? `<br>${e.notes}` : ''}`, { direction: 'top' })
+        .bindTooltip(`⚠ ${e.type}${e.place ? ` · ${e.place}` : ''}<br>${e.date}${e.fatalities ? ` · ${e.fatalities} killed` : e.mentions ? ` · ${e.mentions} reports` : ''}${e.notes ? `<br>${e.notes}` : ''}`, { direction: 'top' })
         .addTo(layer)
     }
     if (showIss && layers?.iss) {

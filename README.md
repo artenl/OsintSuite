@@ -95,9 +95,12 @@ A real-time dark map on the dashboard (Leaflet):
   (adsb.lol).
 - **Ships (AIS)** — live vessels on the same map, via a persistent stream
   (requires a free [aisstream.io](https://aisstream.io) key).
-- **Situational layers** — active **fires/thermal** (NASA FIRMS, free key),
-  **conflict events** (ACLED, free key), and the **ISS** position (CelesTrak,
-  no key) as toggleable overlays.
+- **Situational layers** — **conflict/unrest events** (GDELT raw event feed,
+  free, no key; optional ACLED upgrade), active **fires/thermal** (NASA FIRMS,
+  free key), and the **ISS** position (CelesTrak, no key) as toggleable overlays.
+- **Selective tracking** — each layer (planes, ships, fires, conflict, ISS) can
+  be toggled on/off independently; off layers aren't fetched. Master Live/Paused
+  switch stops everything.
 - **Location search**, city presets, "use my location"; the map refetches for
   whatever area you pan/zoom to. Click any plane/ship for route, type, owner,
   destination, and flag.
