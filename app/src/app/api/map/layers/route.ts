@@ -9,6 +9,9 @@ const schema = z.object({
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   dist: z.number().min(1).max(500).optional(),
+  fires: z.boolean().optional(),
+  conflict: z.boolean().optional(),
+  iss: z.boolean().optional(),
 })
 
 type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
@@ -85,6 +88,9 @@ export async function POST(req: NextRequest) {
 
   const { lat, lon } = parsed.data
   const dist = parsed.data.dist ?? 100
+  const wantFires = parsed.data.fires !== false
+  const wantConflict = parsed.data.conflict !== false
+  const wantIss = parsed.data.iss !== false
   const padLat = (dist / 60) * 1.3
   const padLon = padLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180))
   const bbox = `${(lon - padLon).toFixed(3)},${(lat - padLat).toFixed(3)},${(lon + padLon).toFixed(3)},${(lat + padLat).toFixed(3)}`
@@ -94,14 +100,14 @@ export async function POST(req: NextRequest) {
 
   // ACLED key is stored as "email|key"
   let conflictEvents: Conflict[] = []
-  if (acledKey?.keyValue?.includes('|')) {
+  if (wantConflict && acledKey?.keyValue?.includes('|')) {
     const [email, k] = acledKey.keyValue.split('|')
     conflictEvents = await conflict(k, email, lat, lon)
   }
 
   const [issPos, fireList] = await Promise.all([
-    iss(),
-    firmsKey?.keyValue ? fires(firmsKey.keyValue, bbox) : Promise.resolve([]),
+    wantIss ? iss() : Promise.resolve(null),
+    wantFires && firmsKey?.keyValue ? fires(firmsKey.keyValue, bbox) : Promise.resolve([]),
   ])
 
   return NextResponse.json({

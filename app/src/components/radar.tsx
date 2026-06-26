@@ -134,18 +134,24 @@ export function LiveMap() {
   const load = useCallback(async () => {
     const id = ++reqRef.current
     setLoading(true)
+    const radarOn = showAir || showSea
+    const layersOn = showFire || showConf || showIss
     try {
       const [res, lres] = await Promise.all([
-        fetch('/api/radar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, dist }) }),
-        fetch('/api/map/layers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, dist }) }).catch(() => null),
+        radarOn ? fetch('/api/radar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, dist, aircraft: showAir, vessels: showSea }) }) : Promise.resolve(null),
+        layersOn ? fetch('/api/map/layers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, dist, fires: showFire, conflict: showConf, iss: showIss }) }).catch(() => null) : Promise.resolve(null),
       ])
-      const d = await res.json()
       if (id !== reqRef.current) return
-      if (!res.ok) setError(d.error || 'Radar failed')
-      else { setError(''); setData(d) }
+      if (res) {
+        const d = await res.json()
+        if (id !== reqRef.current) return
+        if (!res.ok) setError(d.error || 'Radar failed')
+        else { setError(''); setData(d) }
+      } else setData(null)
       if (lres?.ok) { const ld = await lres.json(); if (id === reqRef.current) setLayers(ld) }
+      else if (!layersOn) setLayers(null)
     } catch (err) { if (id === reqRef.current) setError(String(err)) } finally { if (id === reqRef.current) setLoading(false) }
-  }, [lat, lon, dist])
+  }, [lat, lon, dist, showAir, showSea, showFire, showConf, showIss])
 
   useEffect(() => {
     if (!tracking) return
@@ -346,6 +352,7 @@ export function LiveMap() {
 
       {/* legend / status */}
       <div className="flex items-center gap-3 px-4 py-2 text-xs flex-wrap" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-muted)' }}>
+        <span className="font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>Track:</span>
         <span className="flex items-center gap-1 cursor-pointer" style={{ color: showAir ? 'var(--color-cyan)' : 'var(--color-muted)' }} onClick={() => setShowAir((s) => !s)}>▲ aircraft</span>
         <span className="flex items-center gap-1 cursor-pointer" style={{ color: showSea ? 'var(--color-purple)' : 'var(--color-muted)' }} onClick={() => setShowSea((s) => !s)}>◆ ships</span>
         <span className="flex items-center gap-1 cursor-pointer" style={{ color: showFire ? '#ff6a00' : 'var(--color-muted)' }} onClick={() => setShowFire((s) => !s)}>🔥 fires {layers?.fires.length ? `(${layers.fires.length})` : ''}</span>

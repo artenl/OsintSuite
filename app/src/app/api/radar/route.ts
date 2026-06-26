@@ -9,6 +9,8 @@ const schema = z.object({
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   dist: z.number().min(1).max(250).optional(),
+  aircraft: z.boolean().optional(),
+  vessels: z.boolean().optional(),
 })
 
 type Aircraft = {
@@ -54,19 +56,23 @@ export async function POST(req: NextRequest) {
 
   const { lat, lon } = parsed.data
   const dist = parsed.data.dist ?? 100
+  const wantAir = parsed.data.aircraft !== false
+  const wantSea = parsed.data.vessels !== false
 
-  const aircraft = await fetchAircraft(lat, lon, dist)
+  const aircraft = wantAir ? await fetchAircraft(lat, lon, dist) : []
 
-  // Vessels (AIS) — only if a key is configured.
+  // Vessels (AIS) — only if requested and a key is configured.
   let vessels: unknown[] = []
   let aisConfigured = false
   let aisConnected = false
   const aisKey = await db.query.apiKeys.findFirst({ where: eq(apiKeys.service, 'aisstream') })
   if (aisKey?.keyValue) {
     aisConfigured = true
-    const r = getVessels(aisKey.keyValue, lat, lon, dist)
-    vessels = r.vessels
-    aisConnected = r.connected
+    if (wantSea) {
+      const r = getVessels(aisKey.keyValue, lat, lon, dist)
+      vessels = r.vessels
+      aisConnected = r.connected
+    }
   }
 
   return NextResponse.json({
