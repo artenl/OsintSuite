@@ -4,7 +4,10 @@ import { unzipSync } from 'fflate'
 // files (static CDN — no API key, no rate limit). Maintains a rolling in-memory
 // buffer of recent global violence/protest events, filtered by map view.
 
-export type ConflictEvent = { id: string; lat: number; lon: number; type: string; date: string; mentions: number; place: string; url: string }
+export type ConflictEvent = {
+  id: string; lat: number; lon: number; type: string; date: string; mentions: number; place: string; url: string
+  actor1?: string; actor2?: string; articles?: number; tone?: number
+}
 
 type State = { events: Map<string, ConflictEvent>; lastTs: string; loadedAt: number; loading: Promise<void> | null }
 const g = globalThis as unknown as { __gdeltConf?: State }
@@ -45,6 +48,8 @@ async function fetchFile(ts: string): Promise<void> {
       state.events.set(id, {
         id, lat, lon, type: ROOT[root], date: f[1] ? `${f[1].slice(0, 4)}-${f[1].slice(4, 6)}-${f[1].slice(6, 8)}` : '',
         mentions: Number(f[31]) || 0, place: f[52] || '', url: f[60]?.trim() || '',
+        actor1: f[6]?.trim() || undefined, actor2: f[16]?.trim() || undefined,
+        articles: Number(f[33]) || undefined, tone: f[34] ? Math.round(Number(f[34]) * 10) / 10 : undefined,
       })
     }
   } catch { /* skip bad file */ }

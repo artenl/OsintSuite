@@ -13,9 +13,9 @@ type Vessel = {
 }
 type RadarData = { aircraft: Aircraft[]; vessels: Vessel[]; aisConfigured: boolean; aisConnected: boolean }
 type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
-type ConflictEvt = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string }
+type ConflictEvt = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string; actor1?: string; actor2?: string; articles?: number; tone?: number }
 type Layers = { iss: { lat: number; lon: number } | null; fires: Fire[]; conflict: ConflictEvt[]; firmsConfigured: boolean; acledConfigured: boolean }
-type Selected = { kind: 'aircraft'; a: Aircraft } | { kind: 'vessel'; v: Vessel } | null
+type Selected = { kind: 'aircraft'; a: Aircraft } | { kind: 'vessel'; v: Vessel } | { kind: 'conflict'; e: ConflictEvt } | null
 type AcInfo = {
   route?: { airline: string | null; airlineCountry: string | null; origin: AP; destination: AP }
   aircraft?: { type: string | null; manufacturer: string | null; registration: string | null; owner: string | null; ownerCountry: string | null }
@@ -185,7 +185,8 @@ export function LiveMap() {
     }
     if (showConf) for (const e of layers?.conflict ?? []) {
       LL.marker([e.lat, e.lon], { icon: conflictIcon(LL) })
-        .bindTooltip(`⚠ ${e.type}${e.place ? ` · ${e.place}` : ''}<br>${e.date}${e.fatalities ? ` · ${e.fatalities} killed` : e.mentions ? ` · ${e.mentions} reports` : ''}${e.notes ? `<br>${e.notes}` : ''}`, { direction: 'top' })
+        .bindTooltip(`⚠ ${e.type}${e.place ? ` · ${e.place}` : ''}<br>${e.date}${e.fatalities ? ` · ${e.fatalities} killed` : e.mentions ? ` · ${e.mentions} reports` : ''}`, { direction: 'top' })
+        .on('click', () => setSelected({ kind: 'conflict', e }))
         .addTo(layer)
     }
     if (showIss && layers?.iss) {
@@ -311,7 +312,7 @@ export function LiveMap() {
       {/* detail panel */}
       {selected && (
         <div className="px-4 py-3" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface-2)' }}>
-          {selected.kind === 'aircraft' ? (
+          {selected.kind === 'aircraft' && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <Plane size={14} style={{ color: 'var(--color-cyan)' }} />
@@ -329,7 +330,8 @@ export function LiveMap() {
               {acInfo?.aircraft?.owner && <Row k="Owner" v={`${acInfo.aircraft.owner}${acInfo.aircraft.ownerCountry ? ` (${acInfo.aircraft.ownerCountry})` : ''}`} />}
               {!acInfoLoading && acInfo && !acInfo.route && !acInfo.aircraft && <p className="text-xs" style={{ color: 'var(--color-muted)' }}>No route/registry record found for this aircraft.</p>}
             </div>
-          ) : (
+          )}
+          {selected.kind === 'vessel' && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <Ship size={14} style={{ color: 'var(--color-purple)' }} />
@@ -345,6 +347,26 @@ export function LiveMap() {
               {selected.v.imo && <Row k="IMO" v={selected.v.imo} />}
               {selected.v.callsign && <Row k="Callsign" v={selected.v.callsign} />}
               {!selected.v.typeLabel && !selected.v.destination && <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Static data (type/destination) not received yet — broadcast every few minutes.</p>}
+            </div>
+          )}
+          {selected.kind === 'conflict' && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span style={{ color: 'var(--color-red)' }}>✷</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{selected.e.type}</span>
+                {selected.e.place && <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{selected.e.place}</span>}
+                <button onClick={() => setSelected(null)} className="ml-auto text-xs" style={{ color: 'var(--color-muted)', cursor: 'pointer' }}>close ✕</button>
+              </div>
+              {(selected.e.actor1 || selected.e.actor2) && <Row k="Parties" v={[selected.e.actor1, selected.e.actor2].filter(Boolean).join('  →  ')} hl="var(--color-red)" />}
+              <Row k="Date" v={selected.e.date || '—'} />
+              <Row k="Coverage" v={`${selected.e.mentions ?? 0} mentions${selected.e.articles ? ` · ${selected.e.articles} articles` : ''}${typeof selected.e.tone === 'number' ? ` · tone ${selected.e.tone}` : ''}`} />
+              {selected.e.url && (
+                <div className="flex gap-3 text-xs">
+                  <span className="font-mono w-24 flex-shrink-0" style={{ color: 'var(--color-muted)' }}>Source</span>
+                  <a href={selected.e.url} target="_blank" rel="noopener noreferrer" className="font-mono flex-1 break-all" style={{ color: 'var(--color-cyan)' }}>{selected.e.url}</a>
+                </div>
+              )}
+              <p className="text-xs pt-1" style={{ color: 'var(--color-muted)' }}>Media-derived event (GDELT) — a reported incident, not a verified casualty count.</p>
             </div>
           )}
         </div>

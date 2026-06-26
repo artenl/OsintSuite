@@ -16,7 +16,7 @@ const schema = z.object({
 })
 
 type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
-type Conflict = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string }
+type Conflict = { lat: number; lon: number; type: string; date: string; fatalities?: number; notes?: string; mentions?: number; place?: string; url?: string; actor1?: string; actor2?: string; articles?: number; tone?: number }
 
 // ISS position — CelesTrak TLE (free, no key) propagated with SGP4. TLE cached.
 const tleCache = globalThis as unknown as { __issTle?: { l1: string; l2: string; ts: number } }
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       conflictSource = 'acled'
     } else {
       const ev = await conflictNear(lat, lon, dist)
-      conflictEvents = ev.map((e) => ({ lat: e.lat, lon: e.lon, type: e.type, date: e.date, mentions: e.mentions, place: e.place, url: e.url }))
+      conflictEvents = ev.map((e) => ({ lat: e.lat, lon: e.lon, type: e.type, date: e.date, mentions: e.mentions, place: e.place, url: e.url, actor1: e.actor1, actor2: e.actor2, articles: e.articles, tone: e.tone }))
       conflictSource = 'gdelt'
     }
   }
