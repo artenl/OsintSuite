@@ -40,6 +40,8 @@ const API_SERVICES = [
   { id: 'urlscan', label: 'URLScan.io', description: 'URL & domain analysis (optional — search works without a key)' },
   { id: 'abusech', label: 'abuse.ch', description: 'Threat intel / URLhaus (free Auth-Key at auth.abuse.ch)' },
   { id: 'aisstream', label: 'aisstream.io', description: 'Live ship/AIS data for the dashboard radar (free key at aisstream.io)' },
+  { id: 'firms', label: 'NASA FIRMS', description: 'Active fire/thermal map layer (free key at firms.modaps.eosdis.nasa.gov)' },
+  { id: 'acled', label: 'ACLED', description: 'Conflict-event map layer — store as "email|key" (free, register at acleddata.com)' },
 ]
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -50,6 +52,8 @@ const SERVICE_LABELS: Record<string, string> = {
   gemini: 'Google Gemini',
   abusech: 'abuse.ch',
   aisstream: 'aisstream.io',
+  firms: 'NASA FIRMS',
+  acled: 'ACLED',
 }
 
 export default function SettingsPage() {

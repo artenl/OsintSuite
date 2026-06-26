@@ -12,6 +12,9 @@ type Vessel = {
   imo?: string | null; callsign?: string | null; draught?: number | null; length?: number | null; width?: number | null
 }
 type RadarData = { aircraft: Aircraft[]; vessels: Vessel[]; aisConfigured: boolean; aisConnected: boolean }
+type Fire = { lat: number; lon: number; confidence: string; frp: number | null; date: string }
+type ConflictEvt = { lat: number; lon: number; type: string; date: string; fatalities: number; notes: string }
+type Layers = { iss: { lat: number; lon: number } | null; fires: Fire[]; conflict: ConflictEvt[]; firmsConfigured: boolean; acledConfigured: boolean }
 type Selected = { kind: 'aircraft'; a: Aircraft } | { kind: 'vessel'; v: Vessel } | null
 type AcInfo = {
   route?: { airline: string | null; airlineCountry: string | null; origin: AP; destination: AP }
@@ -54,6 +57,15 @@ function shipIcon(LL: typeof L) {
     iconSize: [10, 10], iconAnchor: [5, 5],
   })
 }
+function fireIcon(LL: typeof L) {
+  return LL.divIcon({ className: '', html: `<div style="width:7px;height:7px;border-radius:50%;background:#ff6a00;box-shadow:0 0 5px 1px rgba(255,106,0,0.9)"></div>`, iconSize: [7, 7], iconAnchor: [3.5, 3.5] })
+}
+function conflictIcon(LL: typeof L) {
+  return LL.divIcon({ className: '', html: `<div style="color:#ff5555;font-size:13px;line-height:1;text-shadow:0 0 3px rgba(255,85,85,0.9)">✷</div>`, iconSize: [13, 13], iconAnchor: [6, 7] })
+}
+function issIcon(LL: typeof L) {
+  return LL.divIcon({ className: '', html: `<div style="font-size:16px;filter:drop-shadow(0 0 3px rgba(51,255,153,0.9))">🛰️</div>`, iconSize: [18, 18], iconAnchor: [9, 9] })
+}
 
 export function LiveMap() {
   const [view, setView] = useState({ lat: 51.5074, lon: -0.1278, dist: 100 })
@@ -64,6 +76,10 @@ export function LiveMap() {
   const [error, setError] = useState('')
   const [showAir, setShowAir] = useState(true)
   const [showSea, setShowSea] = useState(true)
+  const [layers, setLayers] = useState<Layers | null>(null)
+  const [showFire, setShowFire] = useState(true)
+  const [showConf, setShowConf] = useState(true)
+  const [showIss, setShowIss] = useState(true)
   const [ready, setReady] = useState(false)
   const [selected, setSelected] = useState<Selected>(null)
   const [acInfo, setAcInfo] = useState<AcInfo | null>(null)
@@ -118,11 +134,15 @@ export function LiveMap() {
     const id = ++reqRef.current
     setLoading(true)
     try {
-      const res = await fetch('/api/radar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, dist }) })
+      const [res, lres] = await Promise.all([
+        fetch('/api/radar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, dist }) }),
+        fetch('/api/map/layers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat, lon, dist }) }).catch(() => null),
+      ])
       const d = await res.json()
       if (id !== reqRef.current) return
       if (!res.ok) setError(d.error || 'Radar failed')
       else { setError(''); setData(d) }
+      if (lres?.ok) { const ld = await lres.json(); if (id === reqRef.current) setLayers(ld) }
     } catch (err) { if (id === reqRef.current) setError(String(err)) } finally { if (id === reqRef.current) setLoading(false) }
   }, [lat, lon, dist])
 
@@ -145,7 +165,22 @@ export function LiveMap() {
         .on('click', () => setSelected({ kind: 'vessel', v }))
         .addTo(layer)
     }
-  }, [data, showAir, showSea, ready])
+    if (showFire) for (const f of layers?.fires ?? []) {
+      LL.marker([f.lat, f.lon], { icon: fireIcon(LL) })
+        .bindTooltip(`🔥 Fire/thermal<br>${f.date} · conf ${f.confidence}${f.frp ? ` · ${f.frp} MW` : ''}`, { direction: 'top' })
+        .addTo(layer)
+    }
+    if (showConf) for (const e of layers?.conflict ?? []) {
+      LL.marker([e.lat, e.lon], { icon: conflictIcon(LL) })
+        .bindTooltip(`⚠ ${e.type}<br>${e.date}${e.fatalities ? ` · ${e.fatalities} killed` : ''}${e.notes ? `<br>${e.notes}` : ''}`, { direction: 'top' })
+        .addTo(layer)
+    }
+    if (showIss && layers?.iss) {
+      LL.marker([layers.iss.lat, layers.iss.lon], { icon: issIcon(LL) })
+        .bindTooltip('🛰️ ISS (International Space Station)', { direction: 'top' })
+        .addTo(layer)
+    }
+  }, [data, layers, showAir, showSea, showFire, showConf, showIss, ready])
 
   // enrich a selected aircraft via adsbdb
   useEffect(() => {
@@ -293,12 +328,14 @@ export function LiveMap() {
       )}
 
       {/* legend / status */}
-      <div className="flex items-center gap-4 px-4 py-2 text-xs flex-wrap" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-muted)' }}>
-        <span className="flex items-center gap-1.5"><span style={{ color: 'var(--color-cyan)' }}>▲</span> aircraft</span>
-        <span className="flex items-center gap-1.5"><span style={{ color: 'var(--color-purple)' }}>◆</span> ships</span>
-        {!data?.aisConfigured
-          ? <span>Add a free <a href="https://aisstream.io" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-purple)' }}>aisstream.io</a> key in Settings to see ships</span>
-          : vessels.length === 0 && <span style={{ color: 'var(--color-muted)' }}>{data?.aisConnected ? 'AIS connected — ships fill in over ~30s (coastal areas)' : 'connecting to AIS…'}</span>}
+      <div className="flex items-center gap-3 px-4 py-2 text-xs flex-wrap" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-muted)' }}>
+        <span className="flex items-center gap-1 cursor-pointer" style={{ color: showAir ? 'var(--color-cyan)' : 'var(--color-muted)' }} onClick={() => setShowAir((s) => !s)}>▲ aircraft</span>
+        <span className="flex items-center gap-1 cursor-pointer" style={{ color: showSea ? 'var(--color-purple)' : 'var(--color-muted)' }} onClick={() => setShowSea((s) => !s)}>◆ ships</span>
+        <span className="flex items-center gap-1 cursor-pointer" style={{ color: showFire ? '#ff6a00' : 'var(--color-muted)' }} onClick={() => setShowFire((s) => !s)}>🔥 fires {layers?.fires.length ? `(${layers.fires.length})` : ''}</span>
+        <span className="flex items-center gap-1 cursor-pointer" style={{ color: showConf ? 'var(--color-red)' : 'var(--color-muted)' }} onClick={() => setShowConf((s) => !s)}>✷ conflict {layers?.conflict.length ? `(${layers.conflict.length})` : ''}</span>
+        <span className="flex items-center gap-1 cursor-pointer" style={{ color: showIss ? 'var(--color-cyan)' : 'var(--color-muted)' }} onClick={() => setShowIss((s) => !s)}>🛰️ ISS</span>
+        {layers && !layers.firmsConfigured && <span style={{ color: 'var(--color-muted)' }}>· add a free <a href="https://firms.modaps.eosdis.nasa.gov/api/area/" target="_blank" rel="noopener noreferrer" style={{ color: '#ff6a00' }}>FIRMS</a> key for fires</span>}
+        {!data?.aisConfigured && <span>· <a href="https://aisstream.io" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-purple)' }}>aisstream.io</a> key for ships</span>}
       </div>
     </div>
   )

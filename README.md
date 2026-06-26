@@ -95,7 +95,12 @@ A real-time dark map on the dashboard (Leaflet):
   (adsb.lol).
 - **Ships (AIS)** — live vessels on the same map, via a persistent stream
   (requires a free [aisstream.io](https://aisstream.io) key).
-- City presets, "use my location", and a selectable range; auto-refreshes.
+- **Situational layers** — active **fires/thermal** (NASA FIRMS, free key),
+  **conflict events** (ACLED, free key), and the **ISS** position (CelesTrak,
+  no key) as toggleable overlays.
+- **Location search**, city presets, "use my location"; the map refetches for
+  whatever area you pan/zoom to. Click any plane/ship for route, type, owner,
+  destination, and flag.
 
 ### 🗂️ Investigations
 Every page can **save** its results; saved investigations are listed and openable
