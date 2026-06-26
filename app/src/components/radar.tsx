@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type * as L from 'leaflet'
-import { Map as MapIcon, Plane, Ship, Crosshair, Loader2, RefreshCw } from 'lucide-react'
+import { Map as MapIcon, Plane, Ship, Crosshair, Loader2, RefreshCw, Search } from 'lucide-react'
 
 type Aircraft = { hex: string; flight: string | null; type: string | null; lat: number; lon: number; alt: number | null; gs: number | null; track: number | null }
 type Vessel = {
@@ -68,6 +68,9 @@ export function LiveMap() {
   const [selected, setSelected] = useState<Selected>(null)
   const [acInfo, setAcInfo] = useState<AcInfo | null>(null)
   const [acInfoLoading, setAcInfoLoading] = useState(false)
+  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const geoTokenRef = useRef(0)
 
   const reqRef = useRef(0)
   const elRef = useRef<HTMLDivElement>(null)
@@ -96,6 +99,14 @@ export function LiveMap() {
         const d = Math.min(250, Math.max(10, Math.round(havNm(c.lat, c.lng, ne.lat, ne.lng))))
         setView({ lat: +c.lat.toFixed(4), lon: +c.lng.toFixed(4), dist: d })
         setLabel(`${c.lat.toFixed(2)}, ${c.lng.toFixed(2)}`)
+        // reverse-geocode for a friendly place name (latest wins)
+        const token = ++geoTokenRef.current
+        fetch('/api/geo/geocode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: c.lat, lon: c.lng }) })
+          .then((r) => r.json()).then((g) => {
+            if (token !== geoTokenRef.current) return
+            const dn: string | undefined = g?.results?.[0]?.displayName
+            if (dn) { const p = dn.split(',').map((s: string) => s.trim()); setLabel(p.length > 1 ? `${p[0]}, ${p[p.length - 1]}` : p[0]) }
+          }).catch(() => {})
       })
       setReady(true)
     })()
@@ -162,6 +173,19 @@ export function LiveMap() {
     else setView({ lat: la, lon: lo, dist: 100 })
   }
 
+  async function searchPlace(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!query.trim()) return
+    setSearching(true); setError('')
+    try {
+      const res = await fetch('/api/geo/geocode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: query.trim() }) })
+      const d = await res.json()
+      if (!res.ok || !d.results?.length) { setError(d.error || 'Place not found'); return }
+      const r = d.results[0]
+      goTo(r.lat, r.lon)
+    } catch (err) { setError(String(err)) } finally { setSearching(false) }
+  }
+
   function useMyLocation() {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
@@ -190,6 +214,22 @@ export function LiveMap() {
           {loading ? <Loader2 size={12} className="animate-spin" style={{ color: 'var(--color-muted)' }} /> : <RefreshCw size={12} style={{ color: 'var(--color-muted)', cursor: 'pointer' }} onClick={load} />}
         </div>
       </div>
+
+      {/* search */}
+      <form onSubmit={searchPlace} className="flex gap-2 px-4 py-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <div className="flex-1 relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted)' }} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="Track a location — e.g. Warsaw, Strait of Hormuz, JFK Airport"
+            className="w-full pl-9 pr-3 py-2 rounded-lg text-sm outline-none"
+            style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }} />
+        </div>
+        <button type="submit" disabled={searching || !query.trim()}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold"
+          style={{ background: 'rgba(51,255,153,0.15)', border: '1px solid rgba(51,255,153,0.4)', color: 'var(--color-cyan)', cursor: searching || !query.trim() ? 'not-allowed' : 'pointer', opacity: searching || !query.trim() ? 0.6 : 1 }}>
+          {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} Track
+        </button>
+      </form>
 
       {/* controls */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
