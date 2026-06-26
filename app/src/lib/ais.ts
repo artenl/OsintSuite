@@ -95,7 +95,11 @@ function connect() {
       } catch { /* ignore malformed frame */ }
     })
     ws.on('error', (e) => { state.lastError = String((e as Error).message || e) })
-    ws.on('close', () => { state.connected = false; state.ws = null })
+    ws.on('close', () => {
+      // Only clear state if this is still the active socket (avoid nulling a
+      // freshly-reconnected one during an area change).
+      if (state.ws === ws) { state.connected = false; state.ws = null }
+    })
   } catch (e) {
     state.lastError = String(e)
     state.ws = null
@@ -122,8 +126,13 @@ export function getVessels(apiKey: string, lat: number, lon: number, radiusNm: n
     state.bbox = want
     connect()
   } else if (bboxFarFrom(state.bbox, want)) {
+    // aisstream binds the bbox at connection time — reconnect to change area.
     state.bbox = want
-    subscribe()
+    state.vessels.clear()
+    const old = state.ws
+    state.ws = null
+    try { old.close() } catch { /* ignore */ }
+    connect()
   }
 
   prune()
